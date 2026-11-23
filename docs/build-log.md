@@ -3,13 +3,13 @@
 Newest first, three lines per session.
 
 ## 2026-11-23 WP0.12 publish workflow (GITHUB_TOKEN, no PAT)
-Result: added Dockerfile (minimal bootstrap image, alpine:3.20, org.opencontainers.image.source label) and .github/workflows/publish.yml (pushes ghcr.io/<owner>/arrstart on version tags, GITHUB_TOKEN with packages:write, actions pinned by commit SHA). Verified Dockerfile builds locally (12.1MB). Package public visibility + anonymous pull not yet done (visibility flipped in GitHub settings after first push).
-Open: first public push, then verify anonymous `docker pull ghcr.io/<owner>/arrstart:<tag>` after `docker logout ghcr.io`.
+Result: added Dockerfile (minimal bootstrap image, alpine:3.20, org.opencontainers.image.source label) and .github/workflows/publish.yml (pushes ghcr.io/<owner>/arrstart on version tags, GITHUB_TOKEN with packages:write, actions pinned by commit SHA). Verified Dockerfile builds locally (12.1MB). Tag v0.0.0-ci.1 pushed; publish workflow built and pushed ghcr.io/bruceowenga/arrstart:0.0.0-ci.1; anonymous `docker pull ghcr.io/bruceowenga/arrstart:0.0.0-ci.1` verified after `docker logout ghcr.io` with empty docker auth — image publicly pullable.
+Open: none — WP0.12 publish complete.
 Next: qBittorrent known-password/setPreferences/restart-survival tests; WP0.8; WP0.11/WP0.7 when VM ready.
 
-## 2026-11-23 WP0.12 Namespace and registry (partially complete)
-Result: ADR-0010 decided (GHCR only, ghcr.io/bruceowenga/arrstart, pinned tags never latest); added internal/registry/registry.go with DefaultRegistry as the single Go constant for the namespace (G5/B1). GHCR push smoke blocked — the gh CLI token authenticates but lacks write:packages scope (permission_denied); public-package check blocked until a package is pushed with a scoped PAT and made public.
-Open: GHCR push needs a write:packages PAT; then verify anonymous docker pull ghcr.io/bruceowenga/arrstart:<version>.
+## 2026-11-23 WP0.12 Namespace and registry (complete)
+Result: ADR-0010 decided (GHCR only, ghcr.io/bruceowenga/arrstart, pinned tags never latest); internal/registry/registry.go DefaultRegistry is the single Go namespace constant (G5/B1). GHCR publish works with the workflow-scoped GITHUB_TOKEN (packages:write) — no PAT, no personal token. First public push v0.0.0-ci.1 done; anonymous pull verified.
+Open: pin Seerr and other tagless images by digest (WP0.12 follow-up).
 Next: WP0.8 (HTMX+SSE consolidation already done per BUILD-PLAN), then WP0.11/WP0.7 when the Windows VM is ready.
 
 ## 2026-11-23 Spike S2b/S4b follow-up, Jellyfin library spec bodies, CLAUDE.md hardening rule
