@@ -1,0 +1,9 @@
+# Force LF line endings for scripts, Go, YAML, and golden files so
+# Windows checkouts never convert them to CRLF.
+*.sh text eol=lf
+*.go text eol=lf
+*.yaml text eol=lf
+testdata/** text eol=lf
+
+# PowerShell script must stay ASCII-only for Windows PowerShell 5.1.
+install.ps1 text

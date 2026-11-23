@@ -1,0 +1,33 @@
+# Compiled executables
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go
+/bin/
+/dist/
+/vendor/
+*.test
+coverage.out
+coverage.html
+go.work
+
+# OS noise
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.code-workspace
+
+# Environment (generated .env holds keys; example is fine to keep)
+.env
+.env.*
+
+# Local test media roots used for development/testing
+/test-media/
+/tmp-arrstart-test*/
