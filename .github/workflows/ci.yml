@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   lint:
@@ -35,7 +36,7 @@ jobs:
           fi
 
       - name: markdownlint
-        uses: igorshubovych/markdownlint-cli@v9
+        uses: igorshubovych/markdownlint-cli@v0.45.0
         with:
           config-file: .markdownlint.yaml
           files: 'docs/**/*.md'
@@ -52,7 +53,13 @@ jobs:
           go-version: '1.24'
 
       - name: go test
-        run: go test ./... -race
+        run: |
+          PACKAGES=$(go list ./...)
+          if [ -n "$PACKAGES" ]; then
+            go test ./... -race
+          else
+            echo "No Go packages to test yet"
+          fi
 
   pr-title:
     name: pr-title
