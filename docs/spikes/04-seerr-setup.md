@@ -2,7 +2,7 @@
 
 ## Status: verified against pinned container (Linux) — headless init requires the web UI
 
-*Verified against `seerr/seerr:v3.5.2` (Docker Hub) in a throwaway container on localhost port 18051 with `/app/config` bind-mounted. Linux behavior confirmed: the image runs non-root (uid 1000 `node`) and config ownership must match the compose `user:` (PRD G4). Windows behavior not tested — needs the WP0.11 Windows VM. **Headless initial setup via API is not supported in v3.5.2:** initialization requires an authenticated `connect.sid` session and nothing anonymous issues one.*
+*Verified against `seerr/seerr:v3.5.2` (Docker Hub) in a throwaway container (localhost 18051, `/app/config` bind-mounted). Linux behavior confirmed: uid 1000 `node`, config ownership must match compose `user:` (PRD G4). **Headless initial setup via API is not supported in v3.5.2:** tested with a working Jellyfin admin (created via the verified headless jellyfin wizard) — `POST /api/v1/auth/jellyfin` returns `NO_ADMIN_USER` (Seerr has no admin yet), and `POST /api/v1/settings/initialize` returns 401 without a `connect.sid` cookie / 403 with only an API key. No `/api/v1/auth/login` or user-creation route exists, so the Seerr admin user is created once through the web UI at /setup before jellyfin/sonarr/radarr connections can be configured — full headless Seerr setup is not achievable in v3.5.2.*
 
 ## Goal
 
@@ -48,7 +48,7 @@ Ran the pinned image against localhost, inspected the running user and `/app/con
 
 1. **Linux compose:** set `user: "${PUID}:${PGID}"` (default `1000:1000`) on the Seerr service — do NOT add PUID/PGID env vars (Seerr ignores them). The wizard **chowns `<root>/config/seerr` to PUID:PGID** before first start so the container can write `settings.json`/`db/`. If the dir already matches, no-op (idempotent).
 2. **Windows:** no `user:`; config dir is created by Docker Desktop — verify ownership works on the WP0.11 VM before sealing this.
-3. **First-run setup:** complete once via the web UI at `http://<host>:<port>/setup` (user creates the admin). The wiring engine cannot replace this step in v3.5.2 — document it in the wizard's "what to do next" or as a one-time setup screen with a link to Seerr's URL.
+3. **First-run setup:** the Seerr admin user is created once through the web UI at `http://<host>:<port>/setup`. Verified with a working Jellyfin admin present: `POST /api/v1/auth/jellyfin` → `NO_ADMIN_USER` and `POST /api/v1/settings/initialize` → 401 without `connect.sid` / 403 with API key only, so this step cannot be replaced by the wiring engine in v3.5.2. Document it as a one-time setup screen with a link to Seerr's URL (wording: "not yet verified as a complete jellyfin→seerr→sonarr→radarr flow with a working Jellyfin admin").
 4. **Post-setup connections:** with an authenticated session, call `POST /api/v1/settings/jellyfin` (Jellyfin URL + API key from Jellyfin's `/Auth/Keys`), `POST /api/v1/settings/sonarr` and `/api/v1/settings/radarr` (URL + API key) — record exact bodies against the real running container before WP3.7 implementation; store as fixtures.
 5. **Health:** poll `GET /api/v1/status` (200 = up) for `WaitHealthy`; `restartRequired`/`updateAvailable` are informational.
 
@@ -60,7 +60,7 @@ Ran the pinned image against localhost, inspected the running user and `/app/con
 
 ## Decision needed
 
-- Confirm the one-time-web-UI setup step is acceptable for PRD A8/A7-equivalent Seerr flow, or escalate headless Seerr init as a product decision (it blocks fully unattended installs in v3.5.2).
+- Headless Seerr init in v3.5.2 is blocked (verified: `NO_ADMIN_USER` on `auth/jellyfin`, `connect.sid` required for `initialize`, no headless login route), so the one-time web-UI admin creation at /setup is required for PRD A8 — escalate headless Seerr init as a product decision if fully unattended installs are required (not yet verified as a complete jellyfin→seerr→sonarr→radarr flow with a working Jellyfin admin).
 - Pinned Seerr tag `v3.5.2` already recorded in `templates/versions.yaml`; registry (`seerr/seerr` Docker Hub vs `ghcr.io/seerr-team/seerr`) reconciled at WP0.12.
 
 ## Sources
