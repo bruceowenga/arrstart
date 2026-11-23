@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+      - name: shellcheck
+        run: |
+          if [ -f install.sh ]; then
+            sudo apt-get update -y && sudo apt-get install -y shellcheck
+            shellcheck install.sh
+          else
+            echo "install.sh not present; skipping shellcheck"
+          fi
+
+      - name: markdownlint
+        uses: igorshubovych/markdownlint-cli@v9
+        with:
+          config-file: .markdownlint.yaml
+          files: 'docs/**/*.md'
+
+  unit:
+    name: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: go test
+        run: go test ./... -race
+
+  pr-title:
+    name: pr-title
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: amann/action-semantic-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
