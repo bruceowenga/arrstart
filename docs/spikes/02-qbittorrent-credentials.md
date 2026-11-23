@@ -42,10 +42,10 @@ Key quote from docs.linuxserver.io: *"a temporary password for the `admin` user 
 
 The web UI password is stored under the `[WebUI]` section:
 
-| qBittorrent version | Config key | Hash |
-|---------------------|------------|------|
-| < 4.2.0 | `WebUI\Password_ha1` | HA1 |
-| ≥ 4.2.0 | `WebUI\Password_PBKDF2` | PBKDF2 |
+| qBittorrent version | Config key | Hash | Section |
+|---------------------|------------|------|---------|
+| < 4.2.0 | `WebUI\Password_ha1` | HA1 | `[WebUI]` |
+| ≥ 4.2.0 | `WebUI\Password_PBKDF2` | PBKDF2-HMAC-SHA512, 100k iterations, 16-byte salt, 64-byte derived key | `[WebUI]` |
 
 To reset: remove the password line, restart → qBittorrent logs a new temporary password, login with `adminadmin` (then change via UI).
 
@@ -59,14 +59,15 @@ Exposes `auth/login`, `auth/logout`, and `app/preferences` endpoints. Can change
 
 | Check | Result | Detail |
 |-------|--------|--------|
-| Temp random password printed to container logs on startup | ✅ Pass | Log line contains a random single-use `admin` password (captured: `P7m4WHB3t` on first run; a new one is generated per restart) |
+| Temp random password printed to container logs on startup | ✅ Pass | Log line contains a random `admin` password on startup (captured: `P7m4WHB3t` on first run; a new one is generated per restart) |
+| Temp-password semantics — two consecutive logins | ✅ Pass | Two consecutive `auth/login` calls with **fresh cookie jars, no failures between**, both return 204 — the temp password is **not single-use**; it remains valid until changed/restart |
 | Config path | ✅ Pass | `/config/qBittorrent/qBittorrent.conf` |
 | Password line removed, new temp password logged on restart | ✅ Pass | New temp password generated and logged (`8tuSm5Lv6` on second run) |
-| PBKDF2 hash format, qBittorrent ≥ 4.2.0 | ✅ Pass | `Password_PBKDF2="@ByteArray(<base64>:<base64>)"` (100k SHA-512, 16-byte salt, `<DerivedKey>:<Salt>`) under `[WebUI]` — container starts and parses the hash |
+| PBKDF2 hash format, qBittorrent ≥ 4.2.0 | ✅ Pass | `Password_PBKDF2="@ByteArray(<salt b64>:<derivedKey b64>)"` (100k SHA-512, 16-byte salt, 64-byte SHA-512 derived key) under `[WebUI]` — salt:hash order verified computationally against issue #11680's documented `adminadmin` default hash; container starts and parses the hash |
 | `Password_PBKDF2` section placement | ✅ Pass | Belongs under `[WebUI]`, not `[Preferences]` |
-| Pre-seeded hash accepted at startup | ⚠️ Partial | Container starts cleanly with a pre-seeded hash; host API login still 401, so a *known password usable via API* was not achieved |
-| `POST /api/v2/auth/login` from host with defaults | ❌ Fails (cause not isolated) | HTTP 401 `Unauthorized` for every tried password: startup temp password, pre-seeded-hash password, with and without `Host`/`Referer`/`Origin` headers |
-| `POST /api/v2/auth/login` from host after `LocalHostAuth=true`, `CSRFProtection=false`, `HostHeaderValidation=false` in conf | ✅ Pass | HTTP 204 + `QBT_SID_8080` session cookie (all three flags changed together; individual attribution not isolated) |
+| Pre-seeded hash accepted at startup | ✅ Pass | Container starts cleanly with a pre-seeded `adminadmin` PBKDF2 hash (salt:hash order verified vs issue #11680); **API login with `adminadmin` returns 204** on a matching port mapping with default flags — pre-seeding DOES give a programmatic credential |
+| `POST /api/v2/auth/login` from host with defaults | ⚠️ Port-dependent | Returns 401 on a *mismatched* mapping (e.g. `18080:8080`, Host header port ≠ container listen port — the HostHeaderValidation case). Returns **204 on a matching mapping** (`18082:18082`, `WEBUI_PORT=18082`) with default flags and Host header `127.0.0.1:<port>`, `localhost:<port>`, or LAN-IP:<port>. Root cause isolated: HostHeaderValidation + port mismatch, not the password |
+| `POST /api/v2/auth/login` from host after `LocalHostAuth=true`, `CSRFProtection=false`, `HostHeaderValidation=false` in conf | ✅ Pass (now moot on matching ports) | HTTP 204 + `QBT_SID` cookie; all three flags changed together historically, but matching ports + IP-form Host header work with default flags, so disabling nothing is sufficient |
 | `POST /api/v2/auth/login` from inside container via `localhost:8080` | ✅ Pass | HTTP 204 + `QBT_SID_8080` cookie |
 | `GET /api/v2/app/webApiKey` | ❌ Not found | HTTP 404 — endpoint does not exist in qBittorrent 5.3.0 |
 | `GET /api/v2/app/version` with session cookie | ✅ Pass | HTTP 200 `v5.3.0`, from inside and from the host |
@@ -75,34 +76,32 @@ Exposes `auth/login`, `auth/logout`, and `app/preferences` endpoints. Can change
 
 ### Option A: Pre-seed `qBittorrent.conf` with PBKDF2 hash
 
-Generate a valid `Password_PBKDF2` hash offline, write it into `qBittorrent.conf` in the config volume before first container start. **Verified at container level:** the hash format was reproduced, the container starts with it, and GUI login with a known password works once the WebUI security flags are set. **Not verified:** any API-login path in 5.3.0 — `POST /api/v2/auth/login` still returned 401 with the pre-seeded password through the host port. Pre-seeding alone does not give a programmatic credential.
+Generate a valid `Password_PBKDF2` hash offline (salt:hash order verified against issue #11680's documented `adminadmin` default hash), write it into `qBittorrent.conf` under `[WebUI]` before first container start alongside `HostHeaderValidation=true` (same section). The container starts with no temp password logged, and `POST /api/v2/auth/login` with `adminadmin` returns **204** on a matching port mapping with default flags. **Pre-seeding gives a working programmatic credential.**
 
 ### Option B: Read temp password from logs, then change via API
 
 1. Start container, capture temp password from `docker logs` (**verified** — temp password is logged on startup).
-2. Log in via web UI API (`auth/login`) — **returned 401 for every tried password through the host port** in this session; cause not isolated (see above).
-3. Call `app/preferences` to set a known password — unreachable without step 2.
+2. Log in via web UI API (`auth/login`) — returns 204 on a matching port mapping with default flags (Host header `127.0.0.1:<port>` works). The temp password is **not single-use**: two consecutive logins with fresh cookie jars and no failures between both return 204.
+3. Call `app/preferences` (`app/setPreferences`) to set a known password — reachable once step 2 succeeds.
 
-**Result:** Option B is not viable via the API in this session; log-parsing robustness is moot until step 2 works.
+**Result:** Option B is viable via the API now that the login path is isolated (matching ports + IP-form Host header).
 
 ### Option C: Hybrid — pre-seed empty password + API change on first run
 
-Same limitation as Option B: step 2 (API login) returned 401 for every tried password. Not viable via the API in this session.
+Same path as Option B; step 2 (API login) now works, so the hybrid path is reachable.
 
 ### Option D: Guide the user to set the password once via WebUI
 
-User logs into the WebUI using the temp password from container logs, sets a known password; the wiring engine stores it. **No headless known-credential path was confirmed in qBittorrent 5.3.0**, so this is the documented fallback for the wiring engine (WP3): the wizard presents the logged temp password once, the user sets a known password in the WebUI, and arrstart stores it for qBittorrent connections from WP3 onward.
+User logs into the WebUI using the temp password from container logs, sets a known password; the wiring engine stores it. Kept as the WebUI-based fallback for WP3 when a headless credential is not desired.
 
 ## Recommendation
 
-Use **Option D** as the documented fallback; keep Options A–C as fallbacks-for-later in case the login behavior changes upstream. Re-test login against a future qBittorrent 5.x before pinning an older version.
+**Option A (pre-seeded PBKDF2 hash)** is now verified and is the preferred headless path for A6 — it gives a known, persistent admin credential with no user interaction and no disabled security flags (matching ports + default `HostHeaderValidation=true`). Keep Option B as the temp-password fallback and Option D as the WebUI fallback. Re-test login against a future qBittorrent 5.x before pinning an older version.
 
 ## Open / unverified
 
 | Item | Why it matters | How to verify |
 |------|----------------|---------------|
-| Which WebUI security flag(s) actually unblock host login | All three were changed together; individual attribution unknown | Flip `LocalHostAuth`, `CSRFProtection`, `HostHeaderValidation` one at a time |
-| Cookie portability inside→outside the container | Cookie obtained inside was not accepted from the host | Re-test session flow end-to-end |
 | `web_ui_api_key` via `/api/v2/app/preferences` headlessly | Preferences endpoint is auth-gated; setting a key needs a valid session first | Establish a session, then GET/POST preferences |
 | Whether upstream issue #23831 exists and matches this behavior | Earlier notes cited it; it was not located | Search qBittorrent GitHub; reproduce with matching headers |
 
@@ -116,4 +115,4 @@ Use **Option D** as the documented fallback; keep Options A–C as fallbacks-for
 
 ## Decision needed
 
-- Wiring engine flow for qBittorrent = Option D fallback (user sets password once via WebUI using the logged temp password) — confirm acceptable for WP3.3, or keep Options A–C open pending upstream clarity.
+- Wiring engine flow for qBittorrent = Option A (pre-seeded PBKDF2 hash) preferred, Option B (temp password → API) and Option D (WebUI fallback) available. Headless known-credential path confirmed in qBittorrent 5.3.0 — no decision pending.
