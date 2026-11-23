@@ -267,10 +267,10 @@ The wizard needs the Docker socket to create containers. That is root-equivalent
 - [ ] Pick final name from shortlist (Arrival, arrstart) and check availability (GitHub org/repo, Docker Hub namespace, domain)
 - [ ] README skeleton with the legal framing (media management only, no content, no indexers)
 - [x] Decide wizard UI stack: HTMX + Go templates + SSE (confirm with a half-day spike of the progress screen)
-- [ ] Spike: confirm Servarr env-var API key injection works for current Sonarr, Radarr, Prowlarr
-- [ ] Spike: confirm qBittorrent credential handling in current linuxserver image
-- [ ] Spike: Jellyfin startup wizard via API
-- [ ] Spike: Seerr setup via API, including non-root `user:` and config folder ownership at `/app/config`
+- [x] Spike: confirm Servarr env-var API key injection works for current Sonarr, Radarr, Prowlarr
+- [x] Spike: confirm qBittorrent credential handling in current linuxserver image
+- [x] Spike: Jellyfin startup wizard via API
+- [x] Spike: Seerr setup via API, including non-root `user:` and config folder ownership at `/app/config`
 - [x] Pin exact Seerr, Jellyfin, and arr image tags — recorded in `templates/versions.yaml` (WP0.9)
 - [ ] Spike: hardlink behavior on Windows bind mounts
 - [x] Decide wiring approach: native Go clients; Recyclarr/Configarr only as an optional post-v1 add-on for quality profiles

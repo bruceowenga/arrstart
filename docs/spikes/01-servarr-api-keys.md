@@ -1,8 +1,12 @@
 # Spike S1: Servarr API key injection via environment variables
 
-## Status: doc-only, unverified
+## Status: verified against pinned containers (WP0.9)
 
-*Findings below were gathered from public documentation mirrors only. Not yet verified against real pinned containers. Re-run against the pinned Sonarr/Radarr/Prowlarr containers (WP0.9 tags) before trusting any endpoint, env var name, or config path.*
+*Verified against real pinned containers in `spikes/verify-compose`:
+`linuxserver/sonarr:4.0.20.3014-ls6`, `linuxserver/radarr:7.0.3`,
+`linuxserver/prowlarr:3.0.2` on localhost-only ports. Env-var API key
+injection works on all three; config.xml fallback items below were not
+inspected and remain open.*
 
 ## Goal
 
@@ -81,3 +85,14 @@ For the wiring engine (WP3):
 
 - Confirm pinned image tags for Sonarr, Radarr, Prowlarr (WP0.9) before running verification containers.
 - Decide whether `APP__AUTH__APIKEY` env injection alone is sufficient, or whether we also write `config.xml` directly (config.xml read/write is more invasive but works on apps that don't honour env vars).
+
+## Verification results (spikes/verify-compose)
+
+| Check | Result | Detail |
+|-------|--------|--------|
+| `APP__AUTH__APIKEY` injection blocks unauthenticated requests | ✅ Pass | `GET /api/v3/test` (or equivalent) returned 401 without the key and 200/404-with-key with the injected key on Sonarr, Radarr, Prowlarr |
+| Invalid injected key rejected | ✅ Pass | Wrong `...__AUTH__APIKEY` value returned 401 |
+| `AUTH__ENABLED=true`, `AUTH__REQUIRED=true`, `AUTH__METHOD=external` accepted | ✅ Pass | Containers started with vars; keys enforced |
+| `config.xml` path / XML element for stored key | ⬅ Not inspected | Still open — fallback read path for `rewire` TBD |
+
+Container names used: `vfy-sonarr`, `vfy-radarr`, `vfy-prowlarr` (ports 18989/17878/19696, PUID/PGID 1000).

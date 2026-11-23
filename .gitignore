@@ -30,4 +30,7 @@ Thumbs.db
 
 # Local test media roots used for development/testing
 /test-media/
+/scratch/
 /tmp-arrstart-test*/
+# Throwaway spike scratch (verification containers only)
+spikes/verify-compose/scratch/

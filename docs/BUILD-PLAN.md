@@ -207,10 +207,10 @@ These are not in the PRD yet and the plan depends on them:
 
 - [ ] **WP0.1 Repo scaffold** [S]: MIT license, code of conduct, `.gitignore`, `Makefile`, pre-commit config, issue and PR templates, `CLAUDE.md` (section 7.2), empty directory layout from the PRD.
 - [ ] **WP0.2 CI skeleton** [S]: lint, unit, pr-title jobs. Green on an empty repo.
-- [ ] **WP0.3 Spike S1: Servarr API keys** [S]: confirm env-var key injection (`APP__SECTION__KEY` style) works for Sonarr, Radarr, Prowlarr; fall back to reading `config.xml`. Findings in `docs/spikes/01-servarr-api-keys.md`.
-- [ ] **WP0.4 Spike S2: qBittorrent credentials** [S]: how the current image handles the temporary random password; choose how we set a known credential.
-- [ ] **WP0.5 Spike S3: Jellyfin headless setup** [M]: startup wizard via API, admin user, libraries.
-- [ ] **WP0.6 Spike S4: Seerr setup** [M]: setup via API, non-root `user:`, `/app/config` ownership on Linux and Windows.
+- [x] **WP0.3 Spike S1: Servarr API keys** [S]: confirm env-var key injection (`APP__SECTION__KEY` style) works for Sonarr, Radarr, Prowlarr; fall back to reading `config.xml`. Findings in `docs/spikes/01-servarr-api-keys.md`.
+- [x] **WP0.4 Spike S2: qBittorrent credentials** [S]: how the current image handles the temporary random password; choose how we set a known credential.
+- [x] **WP0.5 Spike S3: Jellyfin headless setup** [M]: startup wizard via API, admin user, libraries.
+- [x] **WP0.6 Spike S4: Seerr setup** [M]: setup via API, non-root `user:`, `/app/config` ownership on Linux and Windows.
 - [ ] **WP0.7 Spike S5: Windows hardlinks** [M]: run the hardlink test on NTFS bind mount vs WSL-native path; apply the PRD 12.3 decision rule.
 - [x] **WP0.8 Spike S6: HTMX + SSE progress screen** [S]: prove the live progress screen pattern.
 - [x] **WP0.9 Pin image tags** [S]: choose and record exact tags for every app image in `templates/versions.yaml`.

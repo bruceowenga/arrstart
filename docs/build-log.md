@@ -2,6 +2,11 @@
 
 Newest first, three lines per session.
 
+## 2026-11-23 WP0.9 close-out + WP0.6 Spike S4: Seerr setup
+Result: S1 Servarr `APP__AUTH__APIKEY` injection verified on pinned containers (401 without/wrong key, authenticated with correct key); S2 qBittorrent temp password + PBKDF2 format verified but /api/v2/auth/login 401 for every password incl. pre-seeded hashes (upstream #23831) → user sets password once via WebUI; S3 Jellyfin 12.4 runs as node:1000, needs ≥2GiB free at cache path, no public headless admin API (/Users/New 401 pre-first-user, /Startup/* 404, no swagger) → one-time UI wizard at /setup then authenticated settings API; S4 Seerr v3.5.2 runs non-root uid 1000, /app/config must be chowned to compose user: (u=1001 fails otherwise), /api/v1/settings/initialize needs an authenticated session → UI setup once, then authenticated API.
+Open: qBittorrent programmatic credential (upstream blocker); Seerr headless login path and Windows behavior; arbitrary-UID chown test (no chown privilege in this env).
+Next: tick WP0.3-WP0.6, then ADRs 0001-0008 (WP0.10) or WP0.7 hardlinks once the Windows VM is ready.
+
 ## 2026-11-23 WP0.9: pin exact image tags
 Result: templates/versions.yaml created with pinned tags — sonarr 4.0.20.3014-ls6, radarr 7.0.3, prowlarr 3.0.2, qbittorrent 5.3.0_v2.1.2-ls488, jellyfin 12.4, seerr v3.5.2 (Docker Hub; GHCR ghcr.io/seerr-team/seerr publishes no version tags, reconcile at WP0.12). PRD and BUILD-PLAN WP0.9 checkboxes ticked.
 Open: verify every tag pulls on amd64 and arm64 at the verification-containers step; reconcile the Seerr registry decision (WP0.12).

@@ -1,8 +1,8 @@
 # Spike S3: Jellyfin headless setup
 
-## Status: doc-only, unverified
+## Status: verified against pinned container (WP0.9) — headless initial setup not supported via public API
 
-*Findings below were gathered from public documentation only. Not yet verified against a real pinned Jellyfin container. Re-run against the pinned image (WP0.9 tag) before trusting any endpoint.*
+*Verified against `jellyfin/jellyfin:12.4` in a throwaway container (localhost port 18096). Public info endpoint and wizard-completion signal confirmed; **no unauthenticated API path exists to create the initial admin user** in 12.4 — `/Users/New` returns 401 before any user exists, `/Startup/*` wizard endpoints and `/Startup/Device`/`/Startup/Pin` return 404, and no public OpenAPI spec is served.*
 
 **Correction — likely startup flow:** The Jellyfin web setup wizard uses public `/Startup/...` endpoints (server configuration, first-user creation, wizard completion) before requiring auth. Check the running container's own OpenAPI spec (`/swagger.json` or equivalent) rather than replaying browser traffic. Likely flow: call startup/public endpoints → authenticate as the new admin → use that token for libraries and API key creation.
 
@@ -16,7 +16,7 @@ And per build-plan §5.1: "Verify app API behavior (Sonarr, Radarr, Prowlarr, qB
 
 ## Method
 
-Searched official Jellyfin docs, api.jellyfin.org (ReDoc — JS-rendered, content not retrievable), GitHub discussions, and third-party API summaries. Did **not** run against real pinned containers yet — verification remains open. Do not trust recalled endpoints; all API fields below must be verified against the pinned Jellyfin image.
+Searched official Jellyfin docs, api.jellyfin.org (ReDoc — JS-rendered, content not retrievable), GitHub discussions, and third-party API summaries. Ran the pinned image in a throwaway container and probed its public/auth boundaries empirically (including inspecting served `jellyfin-web` chunks for wizard routes).
 
 ## Confirmed findings
 
@@ -30,40 +30,52 @@ Searched official Jellyfin docs, api.jellyfin.org (ReDoc — JS-rendered, conten
 | Config directory | `/config` inside container (Jellyfin appdata dir) | jellyfin.org container docs |
 | Image | Official `jellyfin/jellyfin` (LinuxServer Overseerr is deprecated — distinct from Jellyfin) | jellyfin.org |
 
+## Verification results (spikes/verify-compose)
+
+| Check | Result | Detail |
+|-------|--------|--------|
+| Container startup | ✅ Pass | `jellyfin/jellyfin:12.4` starts on port 8096; config at `/config`; **requires ≥ 2 GiB free at the cache path** (`JELLYFIN_CACHE_DIR`, default `/cache`) — startup aborts with a clear `FTL` log otherwise |
+| Public info endpoint `GET /System/Info/Public` | ✅ Pass | 200 without auth; returns `Version`, `StartupWizardCompleted:false` pre-setup — usable to poll wizard state from outside |
+| `GET /System/Info/Public` auth model | ✅ Pass | Anonymous access allowed, so setup-completion can be detected before any token exists |
+| Initial admin user via `POST /Users/New` (no auth) | ❌ **Fails** | 401 even with `StartupWizardCompleted:false` and no users existing — with and without `IsAdministrator` flag, with and without device-profile header |
+| Wizard endpoints `/wizardstart`, `/wizarduser`, `/wizardlibrary`, `/wizardsettings`, `/wizardremoteaccess`, `/wizardfinish` | ⚠️ Client routes only | Exist in `jellyfin-web` as Ember client routes; server returns 404 for direct `/wizard*` requests |
+| `/Startup/public`, `/Startup/nodeinfo/public`, `/Startup/Device`, `/Startup/Pin` | ❌ **404** | None of the guessed public startup endpoints exist in 12.4 |
+| Public OpenAPI spec (`/swagger.json`, `/swagger/v1/swagger.json`, `/openapi.json`) | ❌ **404** | Not served publicly by 12.4 (Swashbuckle present in binaries but not exposed) |
+
+**Conclusion:** Jellyfin 12.4 has **no public API to create the initial admin user headless**. The web setup wizard must be completed once (manually in the browser, at `http://<host>:8096`, or via automated browser driving `http://localhost:18096`). After the wizard completes, `POST /Auth/Keys` (admin-authenticated) creates API keys and library endpoints become available; poll `GET /System/Info/Public` (`StartupWizardCompleted`) to know when setup is done.
+
 ## What's NOT confirmed publicly
 
 | Item | Why it matters | How to verify |
 |------|----------------|---------------|
-| Endpoint + request body to create the initial admin user (startup wizard via API) | PRD requires completing setup via API | Launch pinned Jellyfin, capture network traffic from the web setup wizard, or inspect `Jellyfin.Api` source |
-| Endpoint + request body to add media libraries (folders `/data/media/tv`, `/data/media/movies`) | PRD requirement A7 | Inspect Jellyfin API spec for library/folder endpoints |
-| Whether first-run setup can be bypassed entirely (skip wizard, create admin via config/API) | May avoid UI-wizard scraping | Search Jellyfin source for `StartupWizard` / initial setup logic |
-| API key needed before first user exists? | Chicken-and-egg: API key creation requires admin auth | Verify against real container |
+| Endpoint + request body to add media libraries (folders `/data/media/tv`, `/data/media/movies`) | PRD requirement A7 | Inspect Jellyfin API spec for library/folder endpoints, after wizard completion |
+| Library folder-type IDs for TV vs Movies libraries via API | Needed to add the right library types | Test authenticated library API against running container |
+| API key creation flow `POST /Auth/Keys` + `X-Emby-Token` auth | Needed for wiring engine to call Jellyfin APIs later | Test against container after wizard completion |
+| Whether `StartupWizardCompleted` flips to `true` immediately after wizard finish | Drives the poll-and-proceed step in WP3.6 | Verify against running container after manual wizard completion |
 
-## Recommended approach options for WP3.6 Jellyfin client
+## Recommended approach for WP3.6 Jellyfin client
 
-### Option A: Call the same endpoints the web setup wizard uses
-Capture network traffic from Jellyfin's web setup wizard (creating the admin user), replay those requests from the Go wiring client. Most faithful to Jellyfin's own flow.
+Given the verified results above, the wiring engine cannot create Jellyfin's initial admin user programmatically in 12.4:
 
-### Option B: Create admin via direct API endpoint (if one exists)
-If `POST /Users` or similar accepts a `Policy`/`IsAdministrator` flag and works unauthenticated on first run, use that directly. Unconfirmed — must verify against real container.
+1. **One-time manual wizard:** Start Jellyfin, have the user open the setup wizard at `http://<host>:8096` (or drive it via an automated browser), create the admin user, and finish the wizard. The wizard can set library roots during setup; otherwise libraries are added next.
+2. **Detect completion:** poll `GET /System/Info/Public` until `StartupWizardCompleted == true` (verified: readable without auth).
+3. **Then API-driven:** authenticate as admin (`POST /Users/AuthenticateByName`), create an API key via `POST /Auth/Keys` (`X-Emby-Token` header), then add the TV library (`/data/media/tv`) and Movies library (`/data/media/movies`) through the library API (endpoints/bodies to be confirmed against the running container — see Open below).
 
-### Option C: Hybrid
-Attempt Option B first; if unauthenticated creation fails, scrape/replay wizard traffic (Option A).
+If a fully headless flow is later required, re-test after any Jellyfin update that exposes a public first-user endpoint, or automate the wizard UI with a headless browser.
 
 ## Open / unverified
 
 | Item | How to verify |
 |------|---------------|
-| Pinned Jellyfin image tag (WP0.9) | Decide before running verification containers |
-| Admin user creation endpoint + request body | Capture wizard network traffic; inspect Jellyfin.Api/WebClient source |
-| Library creation endpoint + request body for folders | Inspect Jellyfin API spec or web traffic when adding a library via Dashboard |
-| Authentication model pre-first-user (can API calls proceed without a token?) | Test against running container |
-| Libraries mapping: TV → `/data/media/tv`, Movies → `/data/media/movies` | Verify folder-type IDs and media library types via API |
+| Library creation endpoint + request body for folders (`/data/media/tv`, `/data/media/movies`) | Test authenticated library API against running container after wizard completion |
+| Library folder-type IDs for TV vs Movies libraries via API | Same — inspect add-library payload from Dashboard traffic or API spec |
+| API key creation flow `POST /Auth/Keys` + `X-Emby-Token` auth | Test against container after wizard completion |
+| Whether `StartupWizardCompleted` flips to `true` immediately after wizard finish | Verify against running container after manual wizard completion |
 
 ## Decision needed
 
-- Confirm pinned Jellyfin image tag (WP0.9).
-- Decide Approach A vs B/C for the wiring engine implementation.
+- Confirm pinned Jellyfin image tag (WP0.9): currently `jellyfin/jellyfin:12.4` in `templates/versions.yaml`.
+- Wiring engine flow for Jellyfin = manual wizard once, then API-driven libraries + API key (per recommended approach above). Confirm this is acceptable for WP3.6, or escalate the headless-admin gap as a product decision.
 
 ## Sources
 
