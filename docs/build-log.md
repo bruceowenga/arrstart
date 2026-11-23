@@ -2,6 +2,11 @@
 
 Newest first, three lines per session.
 
+## 2026-11-23 WP3.3 qBittorrent wiring client (PRD A6)
+Result: squash-merged PR #16 as b34f489 — native Go wiring client (WaitHealthy/Configure/Verify) plus SeedConfig pre-seeding the PBKDF2 hash so qBittorrent starts with a known admin credential; unit-tested with httptest fakes, API behavior verified against linuxserver/qbittorrent:5.3.0_v2.1.2-ls488 in spikes S2/S4b (host-port login 204 on matching ports, setPreferences applies save_path/categories). CI lint+unit+pr-title green; branch deleted.
+Open: none for qBittorrent.
+Next: keep wiring clients one WP at a time (WP3.4 Sonarr/Radarr clients).
+
 ## 2026-11-23 WP0.12 publish workflow (GITHUB_TOKEN, no PAT)
 Result: added Dockerfile (minimal bootstrap image, alpine:3.20, org.opencontainers.image.source label) and .github/workflows/publish.yml (pushes ghcr.io/<owner>/arrstart on version tags, GITHUB_TOKEN with packages:write, actions pinned by commit SHA). Verified Dockerfile builds locally (12.1MB). Tag v0.0.0-ci.1 pushed; publish workflow built and pushed ghcr.io/bruceowenga/arrstart:0.0.0-ci.1; anonymous `docker pull ghcr.io/bruceowenga/arrstart:0.0.0-ci.1` verified after `docker logout ghcr.io` with empty docker auth — image publicly pullable.
 Open: none — WP0.12 publish complete.
