@@ -75,16 +75,18 @@ Full headless wizard sequence against a fresh `jellyfin/jellyfin:12.4`:
 
 | Item | Why it matters | How to verify |
 |------|----------------|---------------|
-| Library creation endpoint + request body for folders (`/data/media/tv`, `/data/media/movies`) | PRD requirement A7 | Test authenticated library API against the running container now that admin auth works |
-| Library folder-type IDs for TV vs Movies libraries via API | Needed to add the right library types | Same |
+| Library creation endpoint + request body for folders (`/data/media/tv`, `/data/media/movies`) | PRD requirement A7 | Body shape confirmed from the served OpenAPI spec (see below); **live call NOT reproducible in this env** — fresh container's `POST /Startup/User` returns 404 (no known admin token obtainable), so auth-gated library endpoints could not be exercised live |
+| Library folder-type IDs for TV vs Movies libraries via API | Needed to add the right library types | `GET /Libraries/AvailableOptions?libraryContentType=movies|tvshows&isNewLibrary=true` → 401 (requires admin auth); content type enum values `movies` / `tvshows` confirmed from spec |
 | Exact `POST /Auth/Keys` body shape (only `?app=` query tested → 200) | Needed to create API keys for wiring engine | Test `POST /Auth/Keys?app=arrstart` with full body |
 | Whether `StartupWizardCompleted` flips immediately after `Complete` | Drives poll-and-proceed in WP3.6 | Verified: flips `true` immediately (step 7b above) |
 
-Candidate library endpoints from the served spec (all require admin auth, bodies **not** confirmed against a real container):
+Library endpoint bodies confirmed from the served spec (`GET /api-docs/openapi.json`, OpenAPI 3.0.4, served anonymous by `jellyfin/jellyfin:12.4`; all library mutations require admin auth):
 
-- `GET /Libraries/AvailableOptions?libraryContentType=movies|tvshows` — library option info
-- `POST /Library/VirtualFolders/Paths/Update` — updates a media path (`UpdateMediaPathRequestDto`)
-- `POST /Library/VirtualFolders/LibraryOptions` — update library options (`UpdateLibraryOptionsDto`)
+- `POST /Library/VirtualFolders` — **adds a library/virtual folder**. Body: `AddVirtualFolderDto` = `{"LibraryOptions": {...}}`, where `LibraryOptions.PathInfos` = `[{"Path": "<path>"}]` (e.g. `/data/media/tv`, `/data/media/movies`) plus scan/metadata options (`Enabled`, `EnableRealtimeMonitor`, `PreferredMetadataLanguage`, `MetadataCountryCode`, ...). `additionalProperties: false`.
+- `POST /Library/VirtualFolders/Paths` — add media paths to a library.
+- `POST /Library/VirtualFolders/Paths/Update` — update a media path.
+- `POST /Library/VirtualFolders/LibraryOptions` — update library options.
+- `GET /Libraries/AvailableOptions?libraryContentType=movies|tvshows&isNewLibrary=true` — library option/info for new libraries; requires admin auth (401 anonymous).
 
 ## Recommended approach for WP3.6 Jellyfin client
 
