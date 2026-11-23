@@ -212,8 +212,8 @@ These are not in the PRD yet and the plan depends on them:
 - [ ] **WP0.5 Spike S3: Jellyfin headless setup** [M]: startup wizard via API, admin user, libraries.
 - [ ] **WP0.6 Spike S4: Seerr setup** [M]: setup via API, non-root `user:`, `/app/config` ownership on Linux and Windows.
 - [ ] **WP0.7 Spike S5: Windows hardlinks** [M]: run the hardlink test on NTFS bind mount vs WSL-native path; apply the PRD 12.3 decision rule.
-- [ ] **WP0.8 Spike S6: HTMX + SSE progress screen** [S]: prove the live progress screen pattern.
-- [ ] **WP0.9 Pin image tags** [S]: choose and record exact tags for every app image in `templates/versions.yaml`.
+- [x] **WP0.8 Spike S6: HTMX + SSE progress screen** [S]: prove the live progress screen pattern.
+- [x] **WP0.9 Pin image tags** [S]: choose and record exact tags for every app image in `templates/versions.yaml`.
 - [ ] **WP0.10 Decision records** [S]: write ADRs 0001 to 0008 (section 8).
 - [ ] **WP0.11 Test VMs** [M]: scripted Ubuntu VM and Windows 11 VM with snapshots; document how to reset.
 - [ ] **WP0.12 Name** [S]: pick final name, claim GitHub org/repo, Docker Hub namespace, domain.

@@ -1,0 +1,62 @@
+# templates/versions.yaml
+#
+# Pinned container image tags used to render the generated docker-compose.yml.
+#
+# Rules (PRD G5, PRD 12.5):
+#   * Never use `latest` in generated output — every tag is exact.
+#   * Prefer linuxserver.io images where available (PRD G5).
+#   * Verify every tag against the real registry before a release
+#     (WP0.9 verification step: pull each pinned image on amd64 and arm64).
+#
+# All entries below are multi-arch images (amd64 + arm64) at the registries
+# they were checked against. Re-check tags when apps release new versions;
+# bump `version` whenever any pin changes.
+#
+# version: schema version of this file
+
+version: 1
+
+# Core v1 apps (PRD section 9)
+images:
+  sonarr:
+    image: linuxserver/sonarr
+    tag: "4.0.20.3014-ls6"
+    source: https://hub.docker.com/r/linuxserver/sonarr/tags/
+  radarr:
+    image: linuxserver/radarr
+    tag: "7.0.3"
+    source: https://hub.docker.com/r/linuxserver/radarr/tags/
+  prowlarr:
+    image: linuxserver/prowlarr
+    tag: "3.0.2"
+    source: https://hub.docker.com/r/linuxserver/prowlarr/tags/
+  qbittorrent:
+    image: linuxserver/qbittorrent
+    tag: "5.3.0_v2.1.2-ls488"
+    source: https://hub.docker.com/r/linuxserver/qbittorrent/tags/
+  jellyfin:
+    image: jellyfin/jellyfin
+    tag: "12.4"
+    source: https://hub.docker.com/r/jellyfin/jellyfin/tags
+  seerr:
+    image: seerr/seerr
+    tag: "v3.5.2"
+    source: https://hub.docker.com/r/seerr/seerr/tags
+    note: >
+      PRD section 9 names ghcr.io/seerr-team/seerr, but that registry does
+      not publish version tags for seerr (seerr-team/seerr#736,
+      seerr-team/seerr#2264); versioned tags live on Docker Hub as
+      seerr/seerr:v3.x.x. Reconcile the registry decision (WP0.12,
+      namespace and registry) before the first release.
+
+  # Optional extras (PRD X1-X3, off by default): pinned tags not yet chosen.
+  # Add when each extra leaves TBD status.
+  # gluetun:
+  #   image: linuxserver/gluetun
+  #   tag: TBD
+  # tailscale:
+  #   image: tailscale/tailscale
+  #   tag: TBD
+  # homepage:
+  #   image: gethomepage/homepage
+  #   tag: TBD
