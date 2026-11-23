@@ -2,6 +2,11 @@
 
 Newest first, three lines per session.
 
+## 2026-11-23 WP0.5 Spike S3: Jellyfin headless setup
+Result: docs/spikes/03-jellyfin-headless-setup.md — default ports 8096/8920, /config volume, X-Emby-Token auth, /Auth/Keys requires admin auth. Admin user creation endpoint via API and library creation endpoint unverified — recommend capturing web setup wizard traffic.
+Open: next is WP0.6 Spike S4 (Seerr setup and config ownership).
+Next: WP0.6.
+
 ## 2026-11-23 WP0.4 Spike S2: qBittorrent credentials
 Result: docs/spikes/02-qbittorrent-credentials.md — fixed admin user, temp random password in logs, no credential env vars, PBKDF2 hash in qBittorrent.conf; recommends Option A (pre-seed hash). Container path and hash format unverified against pinned image.
 Open: next is WP0.5 Spike S3 (Jellyfin headless setup).

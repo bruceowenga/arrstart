@@ -57,6 +57,8 @@
 
 - Servarr env-var API key injection confirmed: `<APPNAME>__AUTH__APIKEY` works for Sonarr (`SONARR__AUTH__APIKEY`), Radarr (`RADARR__AUTH__APIKEY`), Prowlarr (`PROWLARR__AUTH__APIKEY`); also `AUTH__ENABLED`, `AUTH__METHOD`, `AUTH__REQUIRED`. Pattern: `<APPNAME>__<NAMESPACE>__<CONFIGITEM>` overrides `config.xml`. Source: docs/spikes/01-servarr-api-keys.md.
 - config.xml path and XML element name for stored API key: unverified — needs testing against real pinned containers.
+- qBittorrent credential approach (Spike S2): fixed `admin` user, no fixed default password, random temp password in logs, no credential env vars, `WebUI\Password_PBKDF2` (v4.2.0+) / `WebUI\Password_ha1` in `qBittorrent.conf`. Recommended: Option A pre-seed PBKDF2 hash; fallback Option B read temp password from logs then API-change. qBittorrent.conf path and hash format unverified.
+- Jellyfin headless setup (Spike S3): default ports 8096/8920, /config volume, X-Emby-Token auth, /Auth/Keys requires admin auth. Admin user creation endpoint via API and library creation endpoint unverified — recommend capturing web setup wizard traffic.
 
 ## Open
 
