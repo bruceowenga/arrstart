@@ -8,7 +8,7 @@ The stack needs a media server for Seerr to connect to and for users to watch co
 
 - Jellyfin is the default and only media server in v1 (PRD §9).
 - Templates treat the media server as a swappable slot: templates and wiring interfaces do not hard-code Jellyfin, so Plex/Emby can be added later as one more template (PRD G8).
-- Jellyfin wiring is scoped to: admin user (one-time via UI — no public headless admin API in Jellyfin 12.4, verified in WP0.9/S3), libraries for /data/media/tv and /data/media/movies (PRD A7), Seerr connection settings.
+- Jellyfin wiring is scoped to: admin user created headless via the public startup wizard (`POST /Startup/Configuration` → `POST /Startup/User` → `POST /Startup/Complete`, then `POST /Users/AuthenticateByName` returns an admin `AccessToken`, verified in WP0.9/S3), libraries for /data/media/tv and /data/media/movies (PRD A7), Seerr connection settings.
 
 ## Consequences
 
