@@ -66,6 +66,11 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
-      - uses: amann/action-semantic-pull-request@v5
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Validate PR title (Conventional Commits)
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          if ! echo "$PR_TITLE" | grep -qE '^(build|ci|docs|feat|fix|perf|refactor|style|test|chore)(\(.+\))?!?: .+'; then
+            echo "PR title does not follow Conventional Commits: $PR_TITLE"
+            echo "Expected: <type>(<scope>): <summary> (e.g. feat(wizard): add health endpoint)"
+            exit 1
+          fi
