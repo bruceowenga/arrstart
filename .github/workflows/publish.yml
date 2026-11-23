@@ -1,0 +1,75 @@
+name: Publish container image to GHCR
+
+# Publish the arrstart bootstrap/wizard image to
+# ghcr.io/${{ github.repository_owner }}/arrstart (ADR-0010: DefaultRegistry).
+#
+# Security (per user rework):
+#   * No PAT ever. Authentication uses the workflow-scoped GITHUB_TOKEN, which
+#     is granted `packages: write` below -- enough to push packages, nothing
+#     more.
+#   * Every action is pinned to an immutable commit SHA (supply-chain hardening
+#     -- tags can be retargeted, SHAs cannot).
+#   * Image tags are pinned to repo versions (never "latest") per PRD G5.
+#
+# Triggered on version tags (git tag v<version>) and manually via workflow_dispatch.
+#
+# After the first successful push, the package must be made public in GitHub
+# settings (Package settings → Change visibility → Public). Anonymous pulls are
+# then verified with:  docker logout ghcr.io && docker pull ghcr.io/<owner>/arrstart:<tag>
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    name: Build and push container image
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        # actions/checkout@v4.4.0
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Set up Docker Buildx
+        # docker/setup-buildx-action@v3.9.0
+        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca
+
+      - name: Log in to GHCR
+        # Uses GITHUB_TOKEN (workflow-scoped, packages: write) -- never a PAT.
+        # docker/login-action@v3.4.0
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ github.token }}
+
+      - name: Determine image tag
+        id: version
+        run: |
+          # Version tags look like v0.1.0 -> image tag 0.1.0.
+          # Manual runs are tagged with the short SHA so they are never
+          # mistaken for a release and never collide with a version tag.
+          if [ -n "${GITHUB_REF_NAME}" ] && echo "${GITHUB_REF_NAME}" | grep -q '^v'; then
+            echo "tag=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=smoke-${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and push minimal image
+        # docker/build-push-action@v6.11.0
+        uses: docker/build-push-action@b32b51a8eda65d6793cd0494a773d4f6bcef32dc
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/arrstart:${{ steps.version.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.title=arrstart
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.version.outputs.tag }}

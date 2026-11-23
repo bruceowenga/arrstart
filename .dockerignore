@@ -1,0 +1,8 @@
+.git
+.gitignore
+.gitattributes
+bin/
+dist/
+scratch/
+**.md
+!README.md
