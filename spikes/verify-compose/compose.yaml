@@ -1,0 +1,85 @@
+# THROWAWAY verification compose for WP0.9 pinned-tag checks (S1/S2/S3).
+# ---------------------------------------------------------------------------
+# DO NOT REUSE FOR REAL INSTALLS. This file exists only to verify pinned
+# app-image behavior against real containers before the wiring engine
+# trusts it. It uses scratch volumes, localhost-bound ports, and
+# obviously-fake verification keys. Delete this directory after
+# verification; nothing here is part of the product.
+#
+# Image pins must match templates/versions.yaml exactly.
+# ---------------------------------------------------------------------------
+
+services:
+  sonarr:
+    image: linuxserver/sonarr:4.0.20.3014-ls6
+    container_name: vfy-sonarr
+    ports:
+      - "127.0.0.1:18989:8989"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - SONARR__AUTH__APIKEY=verify-sonarr-0000000000000001
+      - SONARR__AUTH__ENABLED=true
+      - SONARR__AUTH__REQUIRED=true
+      - SONARR__AUTH__METHOD=external
+    volumes:
+      - ./scratch/sonarr:/config
+    restart: "no"
+
+  radarr:
+    image: linuxserver/radarr:7.0.3
+    container_name: vfy-radarr
+    ports:
+      - "127.0.0.1:17878:7878"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - RADARR__AUTH__APIKEY=verify-radarr-0000000000000001
+      - RADARR__AUTH__ENABLED=true
+      - RADARR__AUTH__REQUIRED=true
+      - RADARR__AUTH__METHOD=external
+    volumes:
+      - ./scratch/radarr:/config
+    restart: "no"
+
+  prowlarr:
+    image: linuxserver/prowlarr:3.0.2
+    container_name: vfy-prowlarr
+    ports:
+      - "127.0.0.1:19696:9696"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - PROWLARR__AUTH__APIKEY=verify-prowlarr-0000000000000001
+      - PROWLARR__AUTH__ENABLED=true
+      - PROWLARR__AUTH__REQUIRED=true
+      - PROWLARR__AUTH__METHOD=external
+    volumes:
+      - ./scratch/prowlarr:/config
+    restart: "no"
+
+  qbittorrent:
+    image: linuxserver/qbittorrent:5.3.0_v2.1.2-ls488
+    container_name: vfy-qbittorrent
+    ports:
+      - "127.0.0.1:18080:8080"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - WEBUI_PORT=8080
+    volumes:
+      - ./scratch/qbittorrent:/config
+    restart: "no"
+
+  jellyfin:
+    image: jellyfin/jellyfin:12.4
+    container_name: vfy-jellyfin
+    ports:
+      - "127.0.0.1:18096:8096"
+    volumes:
+      - ./scratch/jellyfin:/config
+    restart: "no"
