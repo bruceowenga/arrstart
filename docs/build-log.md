@@ -2,6 +2,11 @@
 
 Newest first, three lines per session.
 
+## 2026-11-23 WP3.4 Sonarr and Radarr wiring clients (PRD A3/A4)
+Result: internal/wiring/sonarr + internal/wiring/radarr native Go clients (WaitHealthy/Configure/Verify) sharing internal/wiring/internal/servarr v3 transport; WaitHealthy verified against pinned linuxserver/sonarr:4.0.20.3014-ls6 (:18989) and linuxserver/radarr:7.0.3 (:17878); root-folder add (/data/media/tv, /data/media/movies) verified 201 then GET-returns on real containers; httptest unit tests pass -race including idempotency/wrong-key/verify-failures; e2e run green against real containers. X-Api-Key 401-without/wrong-key path verified in S1.
+Open: Servarr v3 POST /api/v3/downloadclient schema NOT confirmed against pinned containers (multiple 400s; missing Implementation/configContract/fields targetType resolution; no OpenAPI spec exists) — download-client registration in Configure is code-present but UNVERIFIED; hardlink/naming settings keys probed, absent → reported unverified, not impossible (CLAUDE.md). Follow-up: resolve download-client schema or re-probe against a second container attempt before marking WP3.4 fully done.
+Next: WP3.5 Prowlarr client (app links to Sonarr/Radarr, no indexers per rule).
+
 ## 2026-11-23 WP3.3 qBittorrent wiring client (PRD A6)
 Result: squash-merged PR #16 as b34f489 — native Go wiring client (WaitHealthy/Configure/Verify) plus SeedConfig pre-seeding the PBKDF2 hash so qBittorrent starts with a known admin credential; unit-tested with httptest fakes, API behavior verified against linuxserver/qbittorrent:5.3.0_v2.1.2-ls488 in spikes S2/S4b (host-port login 204 on matching ports, setPreferences applies save_path/categories). CI lint+unit+pr-title green; branch deleted.
 Open: none for qBittorrent.
