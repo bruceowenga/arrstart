@@ -257,7 +257,7 @@ Order matters: wire the stack from the bottom up.
 - [ ] **WP3.2 Credentials and keys** [M]: pre-generated API keys, one admin credential, `.env` storage, permissions. `A1`, `A9`
 - [x] **WP3.3 qBittorrent client** [M]: save path, categories, known credential. `A6`
 - [x] **WP3.4 Sonarr and Radarr clients** [L]: download client, root folders, naming, hardlinks. `A3`, `A4`
-- [ ] **WP3.5 Prowlarr client** [M]: app links to Sonarr and Radarr, no indexers added. `A5`
+- [x] **WP3.5 Prowlarr client** [M]: app links to Sonarr and Radarr, no indexers added. `A5`
 - [ ] **WP3.6 Jellyfin client** [L]: admin user, libraries. `A7`
 - [ ] **WP3.7 Seerr client** [L]: connect Jellyfin, Sonarr, Radarr; defaults. `A8`
 - [ ] **WP3.8 Mock indexer and Gate 3 e2e test** [L]: section 5.2.

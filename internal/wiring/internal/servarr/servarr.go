@@ -95,7 +95,7 @@ func readBody(resp *http.Response) string {
 	if resp == nil || resp.Body == nil {
 		return "<no body>"
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	b, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 	return strings.TrimSpace(string(b))
 }
@@ -141,7 +141,7 @@ func (c *Client) GetDownloadClients(ctx context.Context) ([]DownloadClient, erro
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if !statusOK(resp.StatusCode) {
 		return nil, fmt.Errorf("servarr: GET /api/v3/downloadclient returned %s: %s", resp.Status, readBody(resp))
 	}
@@ -159,7 +159,7 @@ func (c *Client) AddDownloadClient(ctx context.Context, dc DownloadClient) error
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if !statusOK(resp.StatusCode) {
 		return fmt.Errorf("servarr: POST /api/v3/downloadclient returned %s: %s", resp.Status, readBody(resp))
 	}
@@ -172,7 +172,7 @@ func (c *Client) GetRootFolders(ctx context.Context) ([]RootFolder, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if !statusOK(resp.StatusCode) {
 		return nil, fmt.Errorf("servarr: GET /api/v3/rootfolder returned %s: %s", resp.Status, readBody(resp))
 	}
@@ -190,7 +190,7 @@ func (c *Client) AddRootFolder(ctx context.Context, path string) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if !statusOK(resp.StatusCode) {
 		return fmt.Errorf("servarr: POST /api/v3/rootfolder returned %s: %s", resp.Status, readBody(resp))
 	}
@@ -206,7 +206,7 @@ func (c *Client) GetSettings(ctx context.Context) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if !statusOK(resp.StatusCode) {
 		return nil, fmt.Errorf("servarr: GET /api/v3/settings returned %s: %s", resp.Status, readBody(resp))
 	}

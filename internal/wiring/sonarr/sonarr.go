@@ -78,9 +78,9 @@ func New(baseURL, apiKey string) *Client {
 // cancelled.
 func (c *Client) WaitHealthy(ctx context.Context) error {
 	for {
-		resp, err := c.Client.Get(ctx, "/api/v3/system/status")
+		resp, err := c.Get(ctx, "/api/v3/system/status")
 		if err == nil {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			return nil
 		}
 		select {
@@ -100,7 +100,7 @@ func (c *Client) Configure(ctx context.Context, cfg any) error {
 	}
 
 	// 1. Sync the qBittorrent download client (add if absent by name).
-	clients, err := c.Client.GetDownloadClients(ctx)
+	clients, err := c.GetDownloadClients(ctx)
 	if err != nil {
 		return fmt.Errorf("sonarr: list download clients: %w", err)
 	}
@@ -112,7 +112,7 @@ func (c *Client) Configure(ctx context.Context, cfg any) error {
 		}
 	}
 	if !present {
-		if err := c.Client.AddDownloadClient(ctx, servarr.DownloadClient{
+		if err := c.AddDownloadClient(ctx, servarr.DownloadClient{
 			Name:     conf.DownloadClient.Name,
 			Protocol: "torrent",
 			Priority: 1,
@@ -128,7 +128,7 @@ func (c *Client) Configure(ctx context.Context, cfg any) error {
 	}
 
 	// 2. Sync the media root folder (add if absent by path).
-	folders, err := c.Client.GetRootFolders(ctx)
+	folders, err := c.GetRootFolders(ctx)
 	if err != nil {
 		return fmt.Errorf("sonarr: list root folders: %w", err)
 	}
@@ -140,7 +140,7 @@ func (c *Client) Configure(ctx context.Context, cfg any) error {
 		}
 	}
 	if !present {
-		if err := c.Client.AddRootFolder(ctx, conf.RootFolder); err != nil {
+		if err := c.AddRootFolder(ctx, conf.RootFolder); err != nil {
 			return fmt.Errorf("sonarr: add root folder %q: %w", conf.RootFolder, err)
 		}
 	}
@@ -158,7 +158,7 @@ func (c *Client) Configure(ctx context.Context, cfg any) error {
 // function of the download client and root folder sharing a filesystem rather
 // than a toggle. Wiring results note this as unverified.
 func (c *Client) syncSettings(ctx context.Context) error {
-	settings, err := c.Client.GetSettings(ctx)
+	settings, err := c.GetSettings(ctx)
 	if err != nil {
 		return err
 	}
@@ -176,11 +176,11 @@ func (c *Client) syncSettings(ctx context.Context) error {
 
 // postSettings writes the full settings object back (POST /api/v3/settings).
 func (c *Client) postSettings(ctx context.Context, settings map[string]any) error {
-	resp, err := c.Client.Post(ctx, "/api/v3/settings", settings)
+	resp, err := c.Post(ctx, "/api/v3/settings", settings)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusNoContent && resp.StatusCode != http.StatusCreated {
 		return fmt.Errorf("sonarr: POST /api/v3/settings returned %s: %s", resp.Status, strings.TrimSpace(string(body)))
@@ -191,7 +191,7 @@ func (c *Client) postSettings(ctx context.Context, settings map[string]any) erro
 // Verify re-checks that qBittorrent is registered as the download client with
 // the expected category and that the root folder path is present.
 func (c *Client) Verify(ctx context.Context) error {
-	clients, err := c.Client.GetDownloadClients(ctx)
+	clients, err := c.GetDownloadClients(ctx)
 	if err != nil {
 		return fmt.Errorf("sonarr: list download clients: %w", err)
 	}
@@ -206,7 +206,7 @@ func (c *Client) Verify(ctx context.Context) error {
 		return fmt.Errorf("sonarr: qBittorrent download client (category tv) not registered")
 	}
 
-	folders, err := c.Client.GetRootFolders(ctx)
+	folders, err := c.GetRootFolders(ctx)
 	if err != nil {
 		return fmt.Errorf("sonarr: list root folders: %w", err)
 	}
