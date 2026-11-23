@@ -1,5 +1,9 @@
 # Spike S2: qBittorrent credentials
 
+## Status: doc-only, unverified
+
+*Findings below were gathered from public documentation only. Not yet verified against a real pinned qBittorrent container. Re-run against the pinned image (WP0.9 tag) before trusting any env var, config path, or hash format.*
+
 ## Goal
 
 Determine how to set a **known, persistent qBittorrent admin credential** in the LinuxServer Docker image, per PRD requirement **A6**:

@@ -1,5 +1,9 @@
 # Spike S1: Servarr API key injection via environment variables
 
+## Status: doc-only, unverified
+
+*Findings below were gathered from public documentation mirrors only. Not yet verified against real pinned containers. Re-run against the pinned Sonarr/Radarr/Prowlarr containers (WP0.9 tags) before trusting any endpoint, env var name, or config path.*
+
 ## Goal
 
 Confirm that env-var API key injection (`APP__SECTION__KEY` style) works for Sonarr, Radarr, Prowlarr, and identify the config.xml fallback path — per PRD requirement **A1**:

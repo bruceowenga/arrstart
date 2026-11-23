@@ -1,5 +1,11 @@
 # Spike S3: Jellyfin headless setup
 
+## Status: doc-only, unverified
+
+*Findings below were gathered from public documentation only. Not yet verified against a real pinned Jellyfin container. Re-run against the pinned image (WP0.9 tag) before trusting any endpoint.*
+
+**Correction — likely startup flow:** The Jellyfin web setup wizard uses public `/Startup/...` endpoints (server configuration, first-user creation, wizard completion) before requiring auth. Check the running container's own OpenAPI spec (`/swagger.json` or equivalent) rather than replaying browser traffic. Likely flow: call startup/public endpoints → authenticate as the new admin → use that token for libraries and API key creation.
+
 ## Goal
 
 Determine how to complete Jellyfin's initial setup headless via API (admin user creation) and add libraries for `/data/media/tv` and `/data/media/movies`, per PRD requirement **A7**:
