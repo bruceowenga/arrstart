@@ -1,0 +1,62 @@
+# THROWAWAY e2e verification compose for WP0.6/Task #5 (Seerr full flow).
+# ---------------------------------------------------------------------------
+# jellyfin + seerr + sonarr + radarr on ONE network so Seerr can reach each
+# app by Docker hostname. Delete this file + scratch after verification.
+# Image pins must match templates/versions.yaml exactly.
+# seerr runs as node:node (1000:1000); its config dir is bind-mounted and
+# chowned to 1000:1000 on the host so the container can write settings.json.
+# ---------------------------------------------------------------------------
+
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:12.4
+    container_name: e2e-jellyfin
+    ports:
+      - "127.0.0.1:19096:8096"
+    volumes:
+      - ./scratch/e2e-jellyfin:/config
+    restart: "no"
+
+  seerr:
+    image: seerr/seerr:v3.5.2
+    container_name: e2e-seerr
+    user: "1000:1000"
+    ports:
+      - "127.0.0.1:19051:5055"
+    volumes:
+      - ./scratch/e2e-seerr:/app/config
+    restart: "no"
+
+  sonarr:
+    image: linuxserver/sonarr:4.0.20.3014-ls6
+    container_name: e2e-sonarr
+    ports:
+      - "127.0.0.1:19989:8989"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - SONARR__AUTH__APIKEY=e2e-sonarr-0000000000000001
+      - SONARR__AUTH__ENABLED=true
+      - SONARR__AUTH__REQUIRED=true
+      - SONARR__AUTH__METHOD=external
+    volumes:
+      - ./scratch/e2e-sonarr:/config
+    restart: "no"
+
+  radarr:
+    image: linuxserver/radarr:7.0.3
+    container_name: e2e-radarr
+    ports:
+      - "127.0.0.1:19878:7878"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - RADARR__AUTH__APIKEY=e2e-radarr-0000000000000001
+      - RADARR__AUTH__ENABLED=true
+      - RADARR__AUTH__REQUIRED=true
+      - RADARR__AUTH__METHOD=external
+    volumes:
+      - ./scratch/e2e-radarr:/config
+    restart: "no"
