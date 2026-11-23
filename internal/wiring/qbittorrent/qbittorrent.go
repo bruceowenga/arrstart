@@ -211,7 +211,7 @@ func (c *Client) Verify(ctx context.Context, expect Config) error {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		return fmt.Errorf("qBittorrent app/version returned %s: %s", resp.Status, strings.TrimSpace(string(body)))
 	}
-	io.Copy(io.Discard, resp.Body)
+	_, _ = io.Copy(io.Discard, resp.Body)
 
 	req, err = http.NewRequestWithContext(
 		ctx, http.MethodGet, c.baseURL+"/api/v2/app/preferences", nil,

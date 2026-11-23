@@ -158,8 +158,6 @@ func extractPasswordPBKDF2(t *testing.T, content string) string {
 
 type fakeQBServer struct {
 	*httptest.Server
-	loginUser     string
-	loginPass     string
 	preferences   map[string]any
 	authRequired  bool
 	lastAuthUser  string
@@ -249,7 +247,9 @@ func (f *fakeQBServer) handlePreferences(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(f.preferences)
+	if err := json.NewEncoder(w).Encode(f.preferences); err != nil {
+		return
+	}
 }
 
 func (f *fakeQBServer) hasSessionCookie(r *http.Request) bool {
