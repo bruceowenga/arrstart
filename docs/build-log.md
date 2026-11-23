@@ -2,6 +2,11 @@
 
 Newest first, three lines per session.
 
+## 2026-11-23 WP3.5 Prowlarr wiring client (PRD A5)
+Result: internal/wiring/prowlarr native Go client (WaitHealthy/Configure/Verify) on the servarr v1 transport (/api/v1); POST /api/v1/applications schema confirmed against real linuxserver/prowlarr:3.0.2 (:19696): Registers Sonarr ("SonarrSettings") and Radarr ("RadarrSettings") applications so indexers sync, skipping existing names (400 "Should be unique"); no indexers added. prowlarrUrl is required and must be the compose-internal URL the *arr containers use to reach Prowlarr (validated by each target *arr). httptest unit tests pass -race; e2e green against real container (WaitHealthy→Configure→Verify→idempotent re-Configure→Verify).
+Open: none for Prowlarr wiring itself.
+Next: WP3.6 Jellyfin client (admin user, libraries) per A7.
+
 ## 2026-11-23 WP3.4 Sonarr and Radarr wiring clients (PRD A3/A4)
 Result: internal/wiring/sonarr + internal/wiring/radarr native Go clients (WaitHealthy/Configure/Verify) sharing internal/wiring/internal/servarr v3 transport; WaitHealthy verified against pinned linuxserver/sonarr:4.0.20.3014-ls6 (:18989) and linuxserver/radarr:7.0.3 (:17878); root-folder add (/data/media/tv, /data/media/movies) verified 201 then GET-returns on real containers; httptest unit tests pass -race including idempotency/wrong-key/verify-failures; e2e run green against real containers. X-Api-Key 401-without/wrong-key path verified in S1.
 Open: Servarr v3 POST /api/v3/downloadclient schema NOT confirmed against pinned containers (multiple 400s; missing Implementation/configContract/fields targetType resolution; no OpenAPI spec exists) — download-client registration in Configure is code-present but UNVERIFIED; hardlink/naming settings keys probed, absent → reported unverified, not impossible (CLAUDE.md). Follow-up: resolve download-client schema or re-probe against a second container attempt before marking WP3.4 fully done.

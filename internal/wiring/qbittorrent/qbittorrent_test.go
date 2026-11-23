@@ -182,7 +182,7 @@ func newFakeQBServer(t *testing.T, authRequired bool) *fakeQBServer {
 	mux.HandleFunc("/api/v2/app/version", f.handleVersion)
 	mux.HandleFunc("/api/v2/app/preferences", f.handlePreferences)
 	f.Server = httptest.NewServer(mux)
-	t.Cleanup(f.Server.Close)
+	t.Cleanup(f.Close)
 	return f
 }
 
@@ -237,7 +237,7 @@ func (f *fakeQBServer) handleVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "text/plain")
-	fmt.Fprint(w, f.versionBody)
+	_, _ = fmt.Fprint(w, f.versionBody)
 }
 
 func (f *fakeQBServer) handlePreferences(w http.ResponseWriter, r *http.Request) {
@@ -259,7 +259,7 @@ func (f *fakeQBServer) hasSessionCookie(r *http.Request) bool {
 
 func TestClientLoginSetsCookie(t *testing.T) {
 	srv := newFakeQBServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 
 	c := New(srv.URL, "admin", "known-pw")
 	if err := c.login(context.Background()); err != nil {
@@ -269,7 +269,7 @@ func TestClientLoginSetsCookie(t *testing.T) {
 
 func TestClientConfigureAndVerify(t *testing.T) {
 	srv := newFakeQBServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 
 	c := New(srv.URL, "admin", "known-pw")
 	cfg := &Config{
@@ -311,7 +311,7 @@ func TestClientConfigureAndVerify(t *testing.T) {
 
 func TestClientVerifyMismatchedSavePath(t *testing.T) {
 	srv := newFakeQBServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 
 	c := New(srv.URL, "admin", "known-pw")
 	srv.preferences = map[string]any{
@@ -329,7 +329,7 @@ func TestClientVerifyMismatchedSavePath(t *testing.T) {
 func TestClientWaitHealthy(t *testing.T) {
 	// Server that is immediately up.
 	srv := newFakeQBServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 	c := New(srv.URL, "admin", "known-pw")
 	if err := c.WaitHealthy(context.Background()); err != nil {
 		t.Fatalf("WaitHealthy on live server: %v", err)
@@ -347,7 +347,7 @@ func TestClientWaitHealthy(t *testing.T) {
 
 func TestClientRejectsWrongCredentials(t *testing.T) {
 	srv := newFakeQBServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 
 	c := New(srv.URL, "admin", "wrong-pw")
 	if err := c.login(context.Background()); err == nil {

@@ -32,7 +32,7 @@ func newFakeServarrServer(t *testing.T, requireKey bool) *fakeServarrServer {
 	mux.HandleFunc("/api/v3/downloadclient", f.handleDownloadClient)
 	mux.HandleFunc("/api/v3/rootfolder", f.handleRootFolder)
 	f.Server = httptest.NewServer(mux)
-	t.Cleanup(f.Server.Close)
+	t.Cleanup(f.Close)
 	return f
 }
 
@@ -84,7 +84,7 @@ func (f *fakeServarrServer) handleRootFolder(w http.ResponseWriter, r *http.Requ
 
 func TestGetDownloadClients(t *testing.T) {
 	srv := newFakeServarrServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 
 	srv.downloadClients = []DownloadClient{{Name: "qBittorrent", Category: "tv"}}
 	c := New(srv.URL, srv.apiKey)
@@ -100,7 +100,7 @@ func TestGetDownloadClients(t *testing.T) {
 
 func TestAddDownloadClient(t *testing.T) {
 	srv := newFakeServarrServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 
 	c := New(srv.URL, srv.apiKey)
 	dc := DownloadClient{Name: "qBittorrent", Protocol: "torrent", Port: 8080, Category: "tv"}
@@ -118,7 +118,7 @@ func TestAddDownloadClient(t *testing.T) {
 
 func TestAddDownloadClientRejectsWrongKey(t *testing.T) {
 	srv := newFakeServarrServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 
 	c := New(srv.URL, "wrong-key")
 	err := c.AddDownloadClient(context.Background(), DownloadClient{Name: "qBittorrent"})
@@ -131,7 +131,7 @@ func TestAddDownloadClientRejectsWrongKey(t *testing.T) {
 
 func TestGetRootFoldersAndAddRootFolder(t *testing.T) {
 	srv := newFakeServarrServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 
 	c := New(srv.URL, srv.apiKey)
 	if err := c.AddRootFolder(context.Background(), "/data/media/tv"); err != nil {
@@ -152,7 +152,7 @@ func TestGetRootFoldersAndAddRootFolder(t *testing.T) {
 
 func TestRequiresAPIKey(t *testing.T) {
 	srv := newFakeServarrServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 
 	c := New(srv.URL, "")
 	if _, err := c.GetDownloadClients(context.Background()); err == nil {
@@ -163,7 +163,7 @@ func TestRequiresAPIKey(t *testing.T) {
 func TestNoKeyServerSucceedsWithoutHeader(t *testing.T) {
 	// A server that does not require a key (e.g. auth not yet enabled).
 	srv := newFakeServarrServer(t, false)
-	defer srv.Server.Close()
+	defer srv.Close()
 
 	c := New(srv.URL, "")
 	if _, err := c.GetDownloadClients(context.Background()); err != nil {

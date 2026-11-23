@@ -105,7 +105,7 @@ func (c *Client) WaitHealthy(ctx context.Context) error {
 		}
 		resp, err := c.httpClient.Do(req)
 		if err == nil {
-			resp.Body.Close()
+			_ = resp.Body.Close()
 			// 200 means authenticated access (possible only with a session);
 			// 401 means the server is up and needs auth. Either way it is
 			// healthy enough to proceed; Configure performs the login.
@@ -140,7 +140,7 @@ func (c *Client) login(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusNoContent {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		return fmt.Errorf("qBittorrent auth/login returned %s: %s", resp.Status, strings.TrimSpace(string(body)))
@@ -181,7 +181,7 @@ func (c *Client) Configure(ctx context.Context, cfg any) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusNoContent {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		return fmt.Errorf("qBittorrent app/setPreferences returned %s: %s", resp.Status, strings.TrimSpace(string(body)))
@@ -206,7 +206,7 @@ func (c *Client) Verify(ctx context.Context, expect Config) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		return fmt.Errorf("qBittorrent app/version returned %s: %s", resp.Status, strings.TrimSpace(string(body)))
@@ -223,7 +223,7 @@ func (c *Client) Verify(ctx context.Context, expect Config) error {
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
 		return fmt.Errorf("qBittorrent app/preferences returned %s: %s", resp.Status, strings.TrimSpace(string(body)))

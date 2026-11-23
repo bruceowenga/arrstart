@@ -49,7 +49,7 @@ func newFakeSonarrServer(t *testing.T, requireKey bool) *fakeSonarrServer {
 	mux.HandleFunc("/api/v3/rootfolder", f.handleRootFolder)
 	mux.HandleFunc("/api/v3/settings", f.handleSettings)
 	f.Server = httptest.NewServer(mux)
-	t.Cleanup(f.Server.Close)
+	t.Cleanup(f.Close)
 	return f
 }
 
@@ -146,7 +146,7 @@ func (f *fakeSonarrServer) handleSettings(w http.ResponseWriter, r *http.Request
 
 func TestConfigureRegistersDownloadClientAndRootFolder(t *testing.T) {
 	srv := newFakeSonarrServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 
 	c := New(srv.URL, srv.apiKey)
 	cfg := &Config{
@@ -185,7 +185,7 @@ func TestConfigureRegistersDownloadClientAndRootFolder(t *testing.T) {
 
 func TestConfigureIsIdempotent(t *testing.T) {
 	srv := newFakeSonarrServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 
 	srv.downloadClients = []servarrDLClient{{Name: "qBittorrent", Category: "tv"}}
 	srv.rootFolders = []servarrRootFolder{{Path: "/data/media/tv"}}
@@ -206,7 +206,7 @@ func TestConfigureIsIdempotent(t *testing.T) {
 
 func TestConfigureRejectsInvalidConfig(t *testing.T) {
 	srv := newFakeSonarrServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 	c := New(srv.URL, srv.apiKey)
 	if err := c.Configure(context.Background(), "not-a-config"); err == nil {
 		t.Fatal("expected error for non-*Config")
@@ -215,7 +215,7 @@ func TestConfigureRejectsInvalidConfig(t *testing.T) {
 
 func TestConfigureRejectsWrongAPIKey(t *testing.T) {
 	srv := newFakeSonarrServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 	c := New(srv.URL, "wrong-key")
 	cfg := &Config{APIKey: "wrong-key", DownloadClient: DownloadClient{Name: "qBittorrent"}}
 	if err := c.Configure(context.Background(), cfg); err == nil {
@@ -227,7 +227,7 @@ func TestConfigureRejectsWrongAPIKey(t *testing.T) {
 
 func TestVerifySuccessAndFailure(t *testing.T) {
 	srv := newFakeSonarrServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 	srv.downloadClients = []servarrDLClient{{Name: "qBittorrent", Category: "tv"}}
 	srv.rootFolders = []servarrRootFolder{{Path: "/data/media/tv"}}
 
@@ -252,7 +252,7 @@ func TestVerifySuccessAndFailure(t *testing.T) {
 
 func TestVerifyWrongAPIKey(t *testing.T) {
 	srv := newFakeSonarrServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 	c := New(srv.URL, "wrong-key")
 	if err := c.Verify(context.Background()); err == nil {
 		t.Fatal("expected error for wrong API key")
@@ -261,7 +261,7 @@ func TestVerifyWrongAPIKey(t *testing.T) {
 
 func TestWaitHealthyLiveAndDead(t *testing.T) {
 	srv := newFakeSonarrServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 	c := New(srv.URL, srv.apiKey)
 	if err := c.WaitHealthy(context.Background()); err != nil {
 		t.Fatalf("WaitHealthy on live server: %v", err)
@@ -277,7 +277,7 @@ func TestWaitHealthyLiveAndDead(t *testing.T) {
 
 func TestConfigureWithoutKeyAgainstKeyServerFails(t *testing.T) {
 	srv := newFakeSonarrServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 	c := New(srv.URL, "")
 	cfg := &Config{DownloadClient: DownloadClient{Name: "qBittorrent"}}
 	if err := c.Configure(context.Background(), cfg); err == nil {
@@ -287,7 +287,7 @@ func TestConfigureWithoutKeyAgainstKeyServerFails(t *testing.T) {
 
 func TestSyncSettingsUnverifiedWhenKeysAbsent(t *testing.T) {
 	srv := newFakeSonarrServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 	srv.settings = map[string]any{"someOtherSetting": true}
 	c := New(srv.URL, srv.apiKey)
 	// No hardlink key → no POST, no error (unverified path).
@@ -309,7 +309,7 @@ func TestNewTrimsTrailingSlash(t *testing.T) {
 func TestVerifyUsesCheckWithinTimeout(t *testing.T) {
 	// Ensure Verify does not hang when the server stalls.
 	srv := newFakeSonarrServer(t, true)
-	defer srv.Server.Close()
+	defer srv.Close()
 	srv.downloadClients = []servarrDLClient{{Name: "qBittorrent", Category: "tv"}}
 	srv.rootFolders = []servarrRootFolder{{Path: "/data/media/tv"}}
 	c := New(srv.URL, srv.apiKey)
