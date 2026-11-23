@@ -53,8 +53,14 @@
 - Single internal/doctor package (checks + fix text together); no separate /doctor folder
 - /spikes for throwaway research code (excluded from lint/release builds); per-package testdata/ for golden files
 
+## Decided (spike findings)
+
+- Servarr env-var API key injection confirmed: `<APPNAME>__AUTH__APIKEY` works for Sonarr (`SONARR__AUTH__APIKEY`), Radarr (`RADARR__AUTH__APIKEY`), Prowlarr (`PROWLARR__AUTH__APIKEY`); also `AUTH__ENABLED`, `AUTH__METHOD`, `AUTH__REQUIRED`. Pattern: `<APPNAME>__<NAMESPACE>__<CONFIGITEM>` overrides `config.xml`. Source: docs/spikes/01-servarr-api-keys.md.
+- config.xml path and XML element name for stored API key: unverified — needs testing against real pinned containers.
+
 ## Open
 
 - Windows default location — result of Phase 0 hardlink spike (PRD §12.3).
 - VPN starting provider set — confirm gluetun WireGuard docs for Mullvad/ProtonVPN.
 - Pin exact image tags (WP0.9).
+- Verify env-var injection + config.xml fallback against real pinned Sonarr/Radarr/Prowlarr containers.
