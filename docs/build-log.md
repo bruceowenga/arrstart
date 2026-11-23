@@ -2,6 +2,11 @@
 
 Newest first, three lines per session.
 
+## 2026-11-23 WP0.12 Namespace and registry (partially complete)
+Result: ADR-0010 decided (GHCR only, ghcr.io/bruceowenga/arrstart, pinned tags never latest); added internal/registry/registry.go with DefaultRegistry as the single Go constant for the namespace (G5/B1). GHCR push smoke blocked — the gh CLI token authenticates but lacks write:packages scope (permission_denied); public-package check blocked until a package is pushed with a scoped PAT and made public.
+Open: GHCR push needs a write:packages PAT; then verify anonymous docker pull ghcr.io/bruceowenga/arrstart:<version>.
+Next: WP0.8 (HTMX+SSE consolidation already done per BUILD-PLAN), then WP0.11/WP0.7 when the Windows VM is ready.
+
 ## 2026-11-23 Spike S2b/S4b follow-up, Jellyfin library spec bodies, CLAUDE.md hardening rule
 Result: S2b qBittorrent login from a sibling container on the compose network (http://qbittorrent:8080) → HTTP 204 with default security flags + startup temp password (so host-port 401 is host-specific, not the remap); S3 Jellyfin 12.4 library endpoint bodies confirmed from the served OpenAPI spec (POST /Library/VirtualFolders → AddVirtualFolderDto{LibraryOptions{PathInfos:[{Path:...}]}} for /data/media/tv and /data/media/movies; GET /Libraries/AvailableOptions?libraryContentType=movies|tvshows&isNewLibrary=true) but live auth-gated calls NOT reproducible here — fresh container POST /Startup/User → 404, no known admin token obtainable; S4b Seerr v3.5.2 on the compose network → GET /api/v1/status 200, X-Api-Key authenticates GET, POST /api/v1/settings/initialize → 403 (UI-once confirmed), POST /api/v1/auth/jellyfin → body {username,password,hostname,port,useSsl,urlBase,name} reaches Jellyfin (401 INVALID_CREDENTIALS with bad creds = reachability confirmed; earlier INVALID_URL was unreachability). No product image lacks a stable version tag, so nothing to pin by digest yet.
 Open: jellyfin admin token not reproducible here (blocks live Jellyfin library calls and Seerr→Jellyfin apiKey exchange); Seerr initialize/settings/sonarr/radarr need connect.sid (one-time web UI at /setup); qBittorrent host-login cause still not isolated.
