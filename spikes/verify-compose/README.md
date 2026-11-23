@@ -4,7 +4,7 @@
 
 - `docs/spikes/01-servarr-api-keys.md` (S1: Servarr `APP__AUTH__APIKEY` env-var injection) — **verified ✅**
 - `docs/spikes/02-qbittorrent-credentials.md` (S2: qBittorrent temp password + known credential) — **verified, upstream blocker ⚠️**
-- `docs/spikes/03-jellyfin-headless-setup.md` (S3: Jellyfin headless setup) — **verified, no public headless admin API ⚠️**
+- `docs/spikes/03-jellyfin-headless-setup.md` (S3: Jellyfin headless setup) — **verified, full headless setup via public `/Startup/*` wizard flow ✅**
 
 ## Run
 
