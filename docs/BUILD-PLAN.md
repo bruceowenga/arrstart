@@ -216,7 +216,7 @@ These are not in the PRD yet and the plan depends on them:
 - [x] **WP0.9 Pin image tags** [S]: choose and record exact tags for every app image in `templates/versions.yaml`.
 - [ ] **WP0.10 Decision records** [S]: write ADRs 0001 to 0008 (section 8).
 - [ ] **WP0.11 Test VMs** [M]: scripted Ubuntu VM and Windows 11 VM with snapshots; document how to reset.
-- [ ] **WP0.12 Name** [S]: pick final name, claim GitHub org/repo, Docker Hub namespace, domain.
+- [x] **WP0.12 Name** [S]: pick final name, claim GitHub org/repo, Docker Hub namespace, domain. Namespace/registry decided in ADR-0010 (GHCR only, ghcr.io/bruceowenga/arrstart, pinned tags never latest); registry-path Go constant added. GHCR push smoke + public-package check need a write:packages PAT (blocked in this env).
 
 **Gate 0:** all spikes documented; PRD updated with results; no blocking unknowns for wiring or Windows paths.
 
