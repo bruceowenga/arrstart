@@ -53,17 +53,20 @@
 - Single internal/doctor package (checks + fix text together); no separate /doctor folder
 - /spikes for throwaway research code (excluded from lint/release builds); per-package testdata/ for golden files
 
-## Decided (spike findings)
+## Decided (spike findings — all doc-only, unverified pending WP0.9 pinned containers)
 
-- Servarr env-var API key injection confirmed: `<APPNAME>__AUTH__APIKEY` works for Sonarr (`SONARR__AUTH__APIKEY`), Radarr (`RADARR__AUTH__APIKEY`), Prowlarr (`PROWLARR__AUTH__APIKEY`); also `AUTH__ENABLED`, `AUTH__METHOD`, `AUTH__REQUIRED`. Pattern: `<APPNAME>__<NAMESPACE>__<CONFIGITEM>` overrides `config.xml`. Source: docs/spikes/01-servarr-api-keys.md.
+- Servarr env-var API key injection (doc-only): `<APPNAME>__AUTH__APIKEY` works for Sonarr (`SONARR__AUTH__APIKEY`), Radarr (`RADARR__AUTH__APIKEY`), Prowlarr (`PROWLARR__AUTH__APIKEY`); also `AUTH__ENABLED`, `AUTH__METHOD`, `AUTH__REQUIRED`. Pattern: `<APPNAME>__<NAMESPACE>__<CONFIGITEM>` overrides `config.xml`. Source: docs/spikes/01-servarr-api-keys.md.
 - config.xml path and XML element name for stored API key: unverified — needs testing against real pinned containers.
-- qBittorrent credential approach (Spike S2): fixed `admin` user, no fixed default password, random temp password in logs, no credential env vars, `WebUI\Password_PBKDF2` (v4.2.0+) / `WebUI\Password_ha1` in `qBittorrent.conf`. Recommended: Option A pre-seed PBKDF2 hash; fallback Option B read temp password from logs then API-change. qBittorrent.conf path and hash format unverified.
-- Jellyfin headless setup (Spike S3): default ports 8096/8920, /config volume, X-Emby-Token auth, /Auth/Keys requires admin auth. Admin user creation endpoint via API and library creation endpoint unverified — recommend capturing web setup wizard traffic.
+- qBittorrent credential approach (doc-only): fixed `admin` user, no fixed default password, random temp password in logs, no credential env vars, `WebUI\Password_PBKDF2` (v4.2.0+) / `WebUI\Password_ha1` in `qBittorrent.conf`. Recommended: Option A pre-seed PBKDF2 hash; fallback Option B read temp password from logs then API-change. qBittorrent.conf path and hash format unverified.
+- Jellyfin headless setup (doc-only, corrected): default ports 8096/8920, /config volume, X-Emby-Token auth, /Auth/Keys requires admin auth. **Correction:** the web setup wizard likely uses public `/Startup/...` endpoints (server config, first user, wizard complete) — check the running container's own OpenAPI spec, not browser-traffic replay. Likely flow: startup endpoints → authenticate as new admin → use token for libraries and API key. Admin user creation endpoint and library creation endpoint unverified.
 
 ## Open
 
 - Windows default location — result of Phase 0 hardlink spike (PRD §12.3).
 - VPN starting provider set — confirm gluetun WireGuard docs for Mullvad/ProtonVPN.
-- Pin exact image tags (WP0.9).
-- Verify env-var injection + config.xml fallback against real pinned Sonarr/Radarr/Prowlarr containers.
+- Pinned image tags recorded in `templates/versions.yaml` (WP0.9): sonarr `linuxserver/sonarr:4.0.20.3014-ls6`, radarr `linuxserver/radarr:7.0.3`, prowlarr `linuxserver/prowlarr:3.0.2`, qBittorrent `linuxserver/qbittorrent:5.3.0_v2.1.2-ls488`, Jellyfin `jellyfin/jellyfin:12.4`, Seerr `seerr/seerr:v3.5.2` (Docker Hub — GHCR `ghcr.io/seerr-team/seerr` publishes no version tags; reconcile that registry decision at WP0.12).
+- **WP0.12 Namespace and registry:** GHCR publishing, registry-path constant, public-package anonymous-pull check — not yet done even though name/repo were decided. Open question raised by WP0.9: Seerr pins live on Docker Hub though PRD §9 names `ghcr.io/seerr-team/seerr` — resolve before first release.
+- Branch protection on `main` — enable now that CI jobs exist (build-plan §3.3).
+- Verify S1–S3 against real pinned containers once WP0.9 pins tags.
+
 - qBittorrent credential approach (Spike S2, docs/spikes/02-qbittorrent-credentials.md): fixed `admin` user, no fixed default password, temporary random password in container logs on startup, no credential env vars, password stored as `WebUI\Password_PBKDF2` (v4.2.0+) / `WebUI\Password_ha1` in `qBittorrent.conf`. Recommended approach: pre-seed PBKDF2 hash (Option A); fallback: read temp password from logs then change via API (Option B). qBittorrent.conf container path and PBKDF2 hash format unverified against pinned image.

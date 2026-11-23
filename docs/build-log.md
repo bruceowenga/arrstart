@@ -2,6 +2,11 @@
 
 Newest first, three lines per session.
 
+## 2026-11-23 WP0.9: pin exact image tags
+Result: templates/versions.yaml created with pinned tags — sonarr 4.0.20.3014-ls6, radarr 7.0.3, prowlarr 3.0.2, qbittorrent 5.3.0_v2.1.2-ls488, jellyfin 12.4, seerr v3.5.2 (Docker Hub; GHCR ghcr.io/seerr-team/seerr publishes no version tags, reconcile at WP0.12). PRD and BUILD-PLAN WP0.9 checkboxes ticked.
+Open: verify every tag pulls on amd64 and arm64 at the verification-containers step; reconcile the Seerr registry decision (WP0.12).
+Next: throwaway compose in spikes/ with all pinned containers; re-verify S1–S3 against it.
+
 ## 2026-11-23 WP0.5 Spike S3: Jellyfin headless setup
 Result: docs/spikes/03-jellyfin-headless-setup.md — default ports 8096/8920, /config volume, X-Emby-Token auth, /Auth/Keys requires admin auth. Admin user creation endpoint via API and library creation endpoint unverified — recommend capturing web setup wizard traffic.
 Open: next is WP0.6 Spike S4 (Seerr setup and config ownership).

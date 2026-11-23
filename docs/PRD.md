@@ -271,7 +271,7 @@ The wizard needs the Docker socket to create containers. That is root-equivalent
 - [ ] Spike: confirm qBittorrent credential handling in current linuxserver image
 - [ ] Spike: Jellyfin startup wizard via API
 - [ ] Spike: Seerr setup via API, including non-root `user:` and config folder ownership at `/app/config`
-- [ ] Pin exact Seerr, Jellyfin, and arr image tags
+- [x] Pin exact Seerr, Jellyfin, and arr image tags — recorded in `templates/versions.yaml` (WP0.9)
 - [ ] Spike: hardlink behavior on Windows bind mounts
 - [x] Decide wiring approach: native Go clients; Recyclarr/Configarr only as an optional post-v1 add-on for quality profiles
 - [ ] Set up CI (lint, unit tests, image build)
