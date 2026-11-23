@@ -363,14 +363,14 @@ Done when: <acceptance criteria from the PRD / gate>
 
 Short files in `docs/adr/`, one per decision: context, decision, consequences. Write them in WP0.10 and add one whenever a decision changes.
 
-- [ ] ADR-0001: Docker-based, one-liner bootstrap, temporary wizard container
-- [ ] ADR-0002: Go backend with HTMX + Go templates + SSE
-- [ ] ADR-0003: Native Go wiring clients (no Buildarr); Recyclarr/Configarr optional later
-- [ ] ADR-0004: Single-root `/data` layout, one folder asked
-- [ ] ADR-0005: Jellyfin only for v1; media server is a swappable slot
-- [ ] ADR-0006: Seerr official image, `user:` and config ownership approach
-- [ ] ADR-0007: Wizard drives `docker compose` by shelling out (vs Docker SDK)
-- [ ] ADR-0008: Windows default location (result of spike S5)
+- [x] ADR-0001: Docker-based, one-liner bootstrap, temporary wizard container
+- [x] ADR-0002: Go backend with HTMX + Go templates + SSE
+- [x] ADR-0003: Native Go wiring clients (no Buildarr); Recyclarr/Configarr optional later
+- [x] ADR-0004: Single-root `/data` layout, one folder asked
+- [x] ADR-0005: Jellyfin only for v1; media server is a swappable slot
+- [x] ADR-0006: Seerr official image, `user:` and config ownership approach
+- [x] ADR-0007: Wizard drives `docker compose` by shelling out (vs Docker SDK)
+- [ ] ADR-0008: Windows default location (result of spike S5) — blocked until WP0.7 runs on the WP0.11 Windows VM
 - [ ] ADR-0009: MIT license; no indexers, media-management framing
 
 ---
