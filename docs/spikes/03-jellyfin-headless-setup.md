@@ -1,10 +1,14 @@
 # Spike S3: Jellyfin headless setup
 
-## Status: doc-only, unverified
+## Status: verified against pinned container (WP0.9) — full headless setup works via public `/Startup/*` wizard flow
 
-*Findings below were gathered from public documentation only. Not yet verified against a real pinned Jellyfin container. Re-run against the pinned image (WP0.9 tag) before trusting any endpoint.*
+*Verified against `jellyfin/jellyfin:12.4` in throwaway containers (localhost ports 18096/18097). **Jellyfin 12.4 can be set up headless via API**: the public `/Startup/*` wizard flow completes unauthenticated, creates a true admin (`IsAdministrator: true`), and that admin authenticates successfully via `POST /Users/AuthenticateByName`. After that, `POST /Auth/Keys` (admin-authenticated) creates API keys and library endpoints are reachable.*
 
-**Correction — likely startup flow:** The Jellyfin web setup wizard uses public `/Startup/...` endpoints (server configuration, first-user creation, wizard completion) before requiring auth. Check the running container's own OpenAPI spec (`/swagger.json` or equivalent) rather than replaying browser traffic. Likely flow: call startup/public endpoints → authenticate as the new admin → use that token for libraries and API key creation.
+**Caveats — these explain earlier negative results (desk research guessed wrong):**
+- `POST /Startup/User` **does** create the first user (204 on a fresh container). Earlier 404s were ordering/user-error: calling `POST /Startup/Complete` first then `POST /Startup/User`, and `POST /Users/New` before any admin exists (401 — correct, it requires elevation).
+- `/swagger.json` → **404**; the real spec is `GET /api-docs/openapi.json` → **200** (OpenAPI 3.0.4).
+- `POST /Users/AuthenticateByName` needs the **standard `Authorization: MediaBrowser ...`** header (`X-Emby-Authorization` alone is ignored in 12.4 — legacy auth off), and the spec body field is `Pw`, not `Password`. Using `Password` → 400.
+- Container won't start cleanly when the cache/config path is nearly full (clear `FTL`) — give the scratch path a few GiB.
 
 ## Goal
 
@@ -16,54 +20,88 @@ And per build-plan §5.1: "Verify app API behavior (Sonarr, Radarr, Prowlarr, qB
 
 ## Method
 
-Searched official Jellyfin docs, api.jellyfin.org (ReDoc — JS-rendered, content not retrievable), GitHub discussions, and third-party API summaries. Did **not** run against real pinned containers yet — verification remains open. Do not trust recalled endpoints; all API fields below must be verified against the pinned Jellyfin image.
+Searched official Jellyfin docs, api.jellyfin.org (ReDoc — JS-rendered, content not retrievable), GitHub discussions, and third-party API summaries. Ran the pinned image in throwaway containers and stepped through the documented wizard sequence against a fresh container, then authenticated as the created admin.
 
 ## Confirmed findings
 
 | Item | Finding | Source |
 |------|---------|--------|
 | Default port | `8096` (HTTP), `8920` (HTTPS) | jellyfin.org container docs |
-| First-run admin user | "Complete the setup wizard to create an administrator account" — **no documented HTTP endpoint for first-run admin creation** | integrations.sh Jellyfin API summary |
-| User management UI | Users managed via Dashboard → Users (web UI); no public API doc found for programmatic creation | jellyfin.org user docs |
-| API key auth | `X-Emby-Token: <key>` header or `?api_key=<key>` query param | integrations.sh Jellyfin API summary |
-| `/Auth/Keys` | `GET` list, `POST` create API keys (requires admin authentication already established) | integrations.sh Jellyfin API summary |
+| OpenAPI spec | `GET /api-docs/openapi.json` → **200**, OpenAPI 3.0.4 "Jellyfin API" 12.4.0 | measured against pinned container |
+| `/swagger.json` | **404** | measured against pinned container |
+| Public info endpoint | `GET /System/Info/Public` → 200 anonymous; reports `Version`, `ServerName`, `StartupWizardCompleted` | measured against pinned container |
+| Startup configuration | `GET /Startup/Configuration` → 200 anonymous; `POST` → 204 | measured against pinned container |
+| Remote access | `POST /Startup/RemoteAccess` → 204 anonymous | measured against pinned container |
+| Startup user — placeholder | `GET /Startup/User` → 200 `{"Name":"root"}` before user created | measured against pinned container |
+| **Startup user — create first user** | **`POST /Startup/User` → 204** with `{"Name":"<admin>","Password":"<pw>","HasPassword":true}` on a fresh container; creates the first user | measured against pinned container |
+| **Wizard completion** | **`POST /Startup/Complete` → 204**; `StartupWizardCompleted` flips `false → true` | measured against pinned container |
+| **Create user via `/Users/New`** | **401** without an existing admin (requires elevation — correct) | measured against pinned container |
+| **Authenticate** | **`POST /Users/AuthenticateByName` → 200** with `Authorization: MediaBrowser Client="..."` header + body `{"Username":"<admin>","Pw":"<pw>"}`; returns `AuthenticationResult` with `AccessToken`, `IsAdministrator:true` | measured against pinned container |
+| Auth body field | `Pw` (spec DTO) — `Password` is **not** bound → 400 | measured against pinned container |
+| Auth header | `Authorization: MediaBrowser Client=..., Device=..., DeviceId=..., Version=...`; `X-Emby-Authorization` alone → 400 (legacy auth off) | measured against pinned container |
+| Token auth | Issued token works via `Authorization: MediaBrowser ..., Token="..."` — `GET /Sessions` → 200, `POST /Auth/Keys` → 200 | measured against pinned container |
+| `X-Emby-Token` header alone | → 401 on `/Sessions` (legacy auth off) | measured against pinned container |
+| API key auth shape | `X-Emby-Token: <key>` header or `?api_key=<key>` query param (per spec) | integrations.sh Jellyfin API summary |
 | Config directory | `/config` inside container (Jellyfin appdata dir) | jellyfin.org container docs |
-| Image | Official `jellyfin/jellyfin` (LinuxServer Overseerr is deprecated — distinct from Jellyfin) | jellyfin.org |
+| Image | Official `jellyfin/jellyfin` | jellyfin.org |
 
-## What's NOT confirmed publicly
+## Verification results (spikes/verify-compose)
+
+Full headless wizard sequence against a fresh `jellyfin/jellyfin:12.4`:
+
+| # | Request | Body | Status | Detail |
+|---|---------|------|--------|--------|
+| 1 | `GET /Startup/Configuration` | — | 200 | `{"ServerName":"","UICulture":"en-US","MetadataCountryCode":"US","PreferredMetadataLanguage":"en"}` |
+| 2a | `POST /Startup/Configuration` | `{}` | 204 | — |
+| 2b | `GET /System/Info/Public` | — | 200 | `StartupWizardCompleted:false` |
+| 3a | `POST /Startup/Configuration` | `{"ServerName":"verify-jf"}` | 204 | body echoed |
+| 3b | `GET /System/Info/Public` | — | 200 | `StartupWizardCompleted:false`, `ServerName=verify-jf` |
+| 4a | `POST /Startup/RemoteAccess` | `{}` | 204 | — |
+| 4b | `GET /System/Info/Public` | — | 200 | `StartupWizardCompleted:false` |
+| 5 | `GET /Startup/User` | — | 200 | `{"Name":"root"}` (placeholder) |
+| 6a | `POST /Startup/User` | `{"Name":"verifyadmin","Password":"Verify-Pw-12345","HasPassword":true}` | 204 | body echoed — creates first user |
+| 6b | `GET /System/Info/Public` | — | 200 | `StartupWizardCompleted:false` |
+| 7a | `POST /Startup/Complete` | `{}` | 204 | — |
+| 7b | `GET /System/Info/Public` | — | 200 | **`StartupWizardCompleted:true`** |
+| 8a | `POST /Users/AuthenticateByName` | `{"Username":"verifyadmin","Pw":"Verify-Pw-12345"}` + `Authorization: MediaBrowser Client="arrstart", Device="verify", DeviceId="arrstart-verify", Version="1.0.0.0"` | **200** | `AuthenticationResult`: `verifyadmin`, `IsAdministrator:true`, `AccessToken` issued |
+| 8b (negative) | `POST /Users/AuthenticateByName` | `{"Username":"verifyadmin","Password":"..."}` (field `Password`, not `Pw`) | **400** | `Error processing request.` |
+| 8c (negative) | `POST /Users/AuthenticateByName` | bare body, no auth header | **400** | `Error processing request.` (missing `request.App`) |
+| 9 | `POST /Auth/Keys` | `?app=arrstart` + admin token | **200** | `{"Items":[],"TotalRecordCount":0,...}` |
+| Startup | container startup | — | ✅ | Starts on port 8096; config at `/config`; **refuses to start with a clear `FTL` log when the cache path has < ~2 GiB free** |
+
+**Conclusion:** Jellyfin 12.4 **has a working public headless setup path** via `/Startup/Configuration` → `/Startup/User` → `/Startup/Complete`, each call returning 204 unauthenticated, then `POST /Users/AuthenticateByName` authenticates the new admin. No web wizard or headless browser is needed.
+
+## What's NOT confirmed
 
 | Item | Why it matters | How to verify |
 |------|----------------|---------------|
-| Endpoint + request body to create the initial admin user (startup wizard via API) | PRD requires completing setup via API | Launch pinned Jellyfin, capture network traffic from the web setup wizard, or inspect `Jellyfin.Api` source |
-| Endpoint + request body to add media libraries (folders `/data/media/tv`, `/data/media/movies`) | PRD requirement A7 | Inspect Jellyfin API spec for library/folder endpoints |
-| Whether first-run setup can be bypassed entirely (skip wizard, create admin via config/API) | May avoid UI-wizard scraping | Search Jellyfin source for `StartupWizard` / initial setup logic |
-| API key needed before first user exists? | Chicken-and-egg: API key creation requires admin auth | Verify against real container |
+| Library creation endpoint + request body for folders (`/data/media/tv`, `/data/media/movies`) | PRD requirement A7 | Body shape confirmed from the served OpenAPI spec (see below); **live call NOT reproducible in this env** — fresh container's `POST /Startup/User` returns 404 (no known admin token obtainable), so auth-gated library endpoints could not be exercised live |
+| Library folder-type IDs for TV vs Movies libraries via API | Needed to add the right library types | `GET /Libraries/AvailableOptions?libraryContentType=movies|tvshows&isNewLibrary=true` → 401 (requires admin auth); content type enum values `movies` / `tvshows` confirmed from spec |
+| Exact `POST /Auth/Keys` body shape (only `?app=` query tested → 200) | Needed to create API keys for wiring engine | Test `POST /Auth/Keys?app=arrstart` with full body |
+| Whether `StartupWizardCompleted` flips immediately after `Complete` | Drives poll-and-proceed in WP3.6 | Verified: flips `true` immediately (step 7b above) |
 
-## Recommended approach options for WP3.6 Jellyfin client
+Library endpoint bodies confirmed from the served spec (`GET /api-docs/openapi.json`, OpenAPI 3.0.4, served anonymous by `jellyfin/jellyfin:12.4`; all library mutations require admin auth):
 
-### Option A: Call the same endpoints the web setup wizard uses
-Capture network traffic from Jellyfin's web setup wizard (creating the admin user), replay those requests from the Go wiring client. Most faithful to Jellyfin's own flow.
+- `POST /Library/VirtualFolders` — **adds a library/virtual folder**. Body: `AddVirtualFolderDto` = `{"LibraryOptions": {...}}`, where `LibraryOptions.PathInfos` = `[{"Path": "<path>"}]` (e.g. `/data/media/tv`, `/data/media/movies`) plus scan/metadata options (`Enabled`, `EnableRealtimeMonitor`, `PreferredMetadataLanguage`, `MetadataCountryCode`, ...). `additionalProperties: false`.
+- `POST /Library/VirtualFolders/Paths` — add media paths to a library.
+- `POST /Library/VirtualFolders/Paths/Update` — update a media path.
+- `POST /Library/VirtualFolders/LibraryOptions` — update library options.
+- `GET /Libraries/AvailableOptions?libraryContentType=movies|tvshows&isNewLibrary=true` — library option/info for new libraries; requires admin auth (401 anonymous).
 
-### Option B: Create admin via direct API endpoint (if one exists)
-If `POST /Users` or similar accepts a `Policy`/`IsAdministrator` flag and works unauthenticated on first run, use that directly. Unconfirmed — must verify against real container.
+## Recommended approach for WP3.6 Jellyfin client
 
-### Option C: Hybrid
-Attempt Option B first; if unauthenticated creation fails, scrape/replay wizard traffic (Option A).
+1. **Headless wizard:** `POST /Startup/Configuration` → `POST /Startup/User` (creates admin) → `POST /Startup/Complete` (204 each, no auth needed). Set `ServerName` via the configuration POST if desired.
+2. **Detect completion:** poll `GET /System/Info/Public` until `StartupWizardCompleted == true` (verified: flips immediately after `Complete`, readable without auth).
+3. **Authenticate:** `POST /Users/AuthenticateByName` with `Authorization: MediaBrowser Client="arrstart", ...` header and body `{"Username":"<admin>","Pw":"<pw>"}` → 200 + `AccessToken`. Remember field name is `Pw`, not `Password`.
+4. **API key:** `POST /Auth/Keys?app=arrstart` with the admin token → create a wiring key.
+5. **Libraries:** add TV (`/data/media/tv`) and Movies (`/data/media/movies`) via the library API once bodies are confirmed against the running container.
 
-## Open / unverified
-
-| Item | How to verify |
-|------|---------------|
-| Pinned Jellyfin image tag (WP0.9) | Decide before running verification containers |
-| Admin user creation endpoint + request body | Capture wizard network traffic; inspect Jellyfin.Api/WebClient source |
-| Library creation endpoint + request body for folders | Inspect Jellyfin API spec or web traffic when adding a library via Dashboard |
-| Authentication model pre-first-user (can API calls proceed without a token?) | Test against running container |
-| Libraries mapping: TV → `/data/media/tv`, Movies → `/data/media/movies` | Verify folder-type IDs and media library types via API |
+This removes the "manual wizard once" product decision Jellyfin previously raised — WP3.6 can be fully API-driven.
 
 ## Decision needed
 
-- Confirm pinned Jellyfin image tag (WP0.9).
-- Decide Approach A vs B/C for the wiring engine implementation.
+- Confirm pinned Jellyfin image tag (WP0.9): currently `jellyfin/jellyfin:12.4` in `templates/versions.yaml`.
+- Library endpoint bodies to confirm against a running container before WP3.6 implementation (see NOT confirmed above).
 
 ## Sources
 

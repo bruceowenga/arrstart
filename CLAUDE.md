@@ -4,6 +4,7 @@
 - Commits: Conventional Commits with a `Refs:` footer listing PRD IDs.
 - Run `make check` before declaring work done. Run `make e2e` for wiring/doctor changes.
 - Verify app API behavior against the pinned images in real containers. Do not rely on memory.
+- Never record "X is impossible" without a spec-following attempt and a check of the OpenAPI spec. Write "not found at probed paths" until a second attempt confirms it.
 - Never add, name, or preconfigure real indexers or content sources. Use the mock indexer.
 - Never commit secrets, real `.env` files, or generated compose files from real runs.
 - Pin image tags. Do not use `latest` in generated output.
