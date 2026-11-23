@@ -64,3 +64,4 @@
 - VPN starting provider set — confirm gluetun WireGuard docs for Mullvad/ProtonVPN.
 - Pin exact image tags (WP0.9).
 - Verify env-var injection + config.xml fallback against real pinned Sonarr/Radarr/Prowlarr containers.
+- qBittorrent credential approach (Spike S2, docs/spikes/02-qbittorrent-credentials.md): fixed `admin` user, no fixed default password, temporary random password in container logs on startup, no credential env vars, password stored as `WebUI\Password_PBKDF2` (v4.2.0+) / `WebUI\Password_ha1` in `qBittorrent.conf`. Recommended approach: pre-seed PBKDF2 hash (Option A); fallback: read temp password from logs then change via API (Option B). qBittorrent.conf container path and PBKDF2 hash format unverified against pinned image.
