@@ -2,6 +2,11 @@
 
 Newest first, three lines per session.
 
+## 2026-11-24 WP3.6 Jellyfin wiring client (PRD A7)
+Result: internal/wiring/jellyfin native Go client (WaitHealthy/Configure/Verify) over Jellyfin's MediaBrowser auth scheme; headless wizard → admin user → API key → libraries verified live against real jellyfin/jellyfin:12.4 (:18889): POST /Startup/Configuration, GET /Startup/User placeholder → POST /Startup/User (body Name/Password/HasPassword) → POST /Startup/Complete → authenticated POST /Users/AuthenticateByName (body Pw; Authorization MediaBrowser Client/Device/DeviceId/Version + Token) → POST /Auth/Keys?app=arrstart → POST /Library/VirtualFolders?name=...&collectionType=... (body LibraryOptions.PathInfos); library paths /data/media/tv, /data/media/movies pre-created on disk in the container before library creation (Jellyfin validates existence). Idempotent re-Configure skips existing user/key/library paths; fresh-client Verify re-authenticates and re-checks wizard + library paths. httptest unit tests pass -race (wizard flow, idempotency, custom libraries, missing-library verify failure, bad-credentials verify failure); golangci-lint clean; gofmt/go vet clean.
+Open: WP3.7 Seerr wiring client (connect Jellyfin, Sonarr, Radarr; defaults) per A8 — one WP at a time.
+Next: WP3.7 Seerr client (PRD A8).
+
 ## 2026-11-23 WP3.5 Prowlarr wiring client (PRD A5)
 Result: internal/wiring/prowlarr native Go client (WaitHealthy/Configure/Verify) on the servarr v1 transport (/api/v1); POST /api/v1/applications schema confirmed against real linuxserver/prowlarr:3.0.2 (:19696): Registers Sonarr ("SonarrSettings") and Radarr ("RadarrSettings") applications so indexers sync, skipping existing names (400 "Should be unique"); no indexers added. prowlarrUrl is required and must be the compose-internal URL the *arr containers use to reach Prowlarr (validated by each target *arr). httptest unit tests pass -race; e2e green against real container (WaitHealthy→Configure→Verify→idempotent re-Configure→Verify).
 Open: none for Prowlarr wiring itself.
