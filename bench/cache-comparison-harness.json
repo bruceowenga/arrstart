@@ -1,0 +1,148 @@
+{
+  "harness": "bench/cache-comparison-harness.json",
+  "version": "1.0.0-experimental",
+  "status": "spec only — not executed; no browser benchmark runner exists in the repo yet",
+  "purpose": "Compare dashboard caching/SSE/chart strategies for WP3.13 area optimizations. Feeds the findings in docs/spikes/wp08-consolidation.md.",
+  "constraints": [
+    "No Node build step in this repo (PRD 12.1): harness is a JSON spec, to be run in headless Chrome by a future CI job or ad-hoc.",
+    "No real Docker containers, no pinned images, no real indexer/content-source traffic.",
+    "No secrets, no generated .env/compose output.",
+    "Same-origin SSE only; localhost-only wizard surface."
+  ],
+  "environment": {
+    "browser": "headless Chrome (stable), default cache disabled (--disable-cache)",
+    "network": "throttled to ~5 Mbps down / 1 Mbps up with 80 ms RTT (simulating LAN)",
+    "repeats": "7 runs per scenario, report median + p90"
+  },
+  "strategies": {
+    "cache": [
+      { "id": "cache-dexie", "label": "Dexie IndexedDB indexed tables (v4.4.7)", "notes": "Widget layout/preferences + SSE checkpoint/outbox" },
+      { "id": "cache-localstorage", "label": "localStorage", "notes": "Tiny primitives only; synchronous, string-only, ~5 MB" },
+      { "id": "cache-sessionstorage", "label": "sessionStorage", "notes": "Tab-ephemeral drafts; synchronous, string-only" },
+      { "id": "cache-graphql-hooks", "label": "graphql-hooks key/value cache", "notes": "Study-only: no GraphQL backend in v1; maintenance signal low" },
+      { "id": "cache-apollo", "label": "Apollo InMemoryCache", "notes": "Study-only: heavy, no GraphQL backend in v1" },
+      { "id": "cache-urql", "label": "urql document cache + graphcache + dedupExchange", "notes": "Study-only; hold if a React dashboard is added later" }
+    ],
+    "sse": [
+      { "id": "sse-per-widget", "label": "N per-widget SSE streams", "notes": "One EventSource per widget" },
+      { "id": "sse-batched", "label": "Single batched SSE endpoint + client meter", "notes": "/sse/metrics with per-widget event typing; envelope {id,ts,event,widgetId,payload}" },
+      { "id": "sse-poll-fallback", "label": "hx-trigger every 45s polling fallback", "notes": "Used only when SSE is unavailable" }
+    ],
+    "chart": [
+      { "id": "chart-svg-recharts", "label": "SVG DOM via Recharts", "notes": "Good <~500 pts/series; linear DOM cost beyond" },
+      { "id": "chart-canvas-decimated", "label": "Canvas with decimation, animation off", "notes": "Recommended default for ~1k pts/series" },
+      { "id": "chart-webgl", "label": "WebGL (lightweight-charts / plotly-gl)", "notes": "10k+ pts/series; heavy bundle; bench-gated" }
+    ],
+    "mutationQueue": [
+      { "id": "queue-mainthread", "label": "Main-thread optimistic updates + IndexedDB checkpoint", "notes": "V1 default" },
+      { "id": "queue-worker-sqljs", "label": "Web Worker sql.js WASM queue", "notes": "Post-v1; persistence via db.export() -> IndexedDB/OPFS manual" }
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "S-01",
+      "name": "Cold first paint: metrics dashboard",
+      "slo": "First contentful paint of dashboard shell < 3 s (WP3.13 theme: SSE metrics first paint)",
+      "strategies": [ "cache-dexie", "sse-batched", "chart-canvas-decimated", "queue-mainthread" ],
+      "setup": "Load dashboard HTML; inline critical SSE consumer inline; chart lib deferred with <script defer>; connect /sse/metrics; server emits heartbeat immediately.",
+      "metrics": [
+        { "name": "FCP", "source": "PerformanceObserver / NavigationTiming" },
+        { "name": "LCP", "source": "Largest Contentful Paint entry" },
+        { "name": "timeToFirstSSEEventMs", "definition": "navigationStart -> first message event applied" },
+        { "name": "longTasks > 50 ms", "source": "PerformanceObserver longtask" }
+      ],
+      "payloads": {
+        "widgetConfig": { "sizeBytes": 150, "count": 20 },
+        "firstSSEBatch": { "sizeBytes": 4096, "eventCount": 20 }
+      },
+      "gates": [ "fcp < 1200 ms", "timeToFirstSSEEventMs < 1500 ms", "longTasksCount(>50ms) <= 2" ]
+    },
+    {
+      "id": "S-02",
+      "name": "Widget state persist roundtrip",
+      "slo": "Persist + restore widget layout in < 100 ms p95",
+      "strategies": [ "cache-dexie", "cache-localstorage", "cache-sessionstorage" ],
+      "setup": "Write 50 widget preference records (layout order, collapsed, refresh interval), reload page, restore.",
+      "metrics": [
+        { "name": "persistWriteMs", "definition": "transaction commit time p50/p95" },
+        { "name": "restoreReadMs", "definition": "read all records time p50/p95" },
+        { "name": "mainThreadBlockedMs", "definition": "longtask time attributable to storage" }
+      ],
+      "payloads": {
+        "widgetPreferenceRecord": { "sizeBytes": 200 },
+        "recordCount": 50
+      },
+      "gates": [ "persistWriteMs p95 < 100 ms", "restoreReadMs p95 < 100 ms" ]
+    },
+    {
+      "id": "S-03",
+      "name": "SSE offline / reconnect replay",
+      "slo": "Reconnect within 5 s; missed events replayed and deduplicated; no duplicate widget updates",
+      "strategies": [ "sse-batched", "cache-dexie", "queue-mainthread" ],
+      "setup": "Establish stream; block network for 8 s while server emits 12 events with ids; restore network; observe Last-Event-ID replay and dedupe.",
+      "metrics": [
+        { "name": "reconnectTimeMs", "definition": "network restore -> EventSource onopen" },
+        { "name": "replayedEvents", "definition": "events received after reconnect with id > checkpoint" },
+        { "name": "duplicateApplications", "definition": "widget refreshes for already-applied event ids (must be 0)" },
+        { "name": "outboxDrainLagMs", "definition": "oldest unapplied outbox op -> applied" }
+      ],
+      "payloads": {
+        "sseEvent": { "sizeBytes": 250 },
+        "eventsInGap": 12,
+        "serverReplayBuffer": { "size": 500, "ttlSeconds": 300 }
+      },
+      "gates": [ "reconnectTimeMs < 5000", "duplicateApplications == 0", "replayedEvents == eventsInGap" ]
+    },
+    {
+      "id": "S-04",
+      "name": "Metrics line chart render cost",
+      "slo": "< 16 ms frame budget per update (60 fps) at 1 k points/series",
+      "strategies": [ "chart-svg-recharts", "chart-canvas-decimated", "chart-webgl" ],
+      "setup": "Render 4 widgets each with a line chart at 1 k / 10 k / 100 k points; trigger one update per second for 30 s.",
+      "metrics": [
+        { "name": "frameTimeMs p95", "definition": "render task duration per update" },
+        { "name": "memoryGrowthMB", "definition": "heap delta after 30 updates (performance.memory if available)" },
+        { "name": "decodeParseMs", "definition": "chart library parse + compile time" }
+      ],
+      "payloads": {
+        "point": { "sizeBytes": 16, "note": "{t: timestamp, v: float}" },
+        "seriesSizes": [ 1000, 10000, 100000 ]
+      },
+      "gates": [ "frameTimeMs p95 < 16 ms at 1k pts", "memoryGrowthMB < 10 MB over 30 updates" ]
+    },
+    {
+      "id": "S-05",
+      "name": "SSE throughput under metering",
+      "slo": "Client applies <= 5 events/widget/sec; coalesced updates never exceed 1 per widget per 250 ms",
+      "strategies": [ "sse-batched", "sse-poll-fallback" ],
+      "setup": "Server floods 100 events/sec across 20 widgets for 10 s; count applied widget refreshes.",
+      "metrics": [
+        { "name": "appliedEventsPerSec", "definition": "widget refreshes per second" },
+        { "name": "eventsDroppedByCoalesce", "definition": "superseded events never applied" },
+        { "name": "pollRequestsPerMinute", "definition": "fallback polling request rate (should be < 2/min per widget)" }
+      ],
+      "payloads": {
+        "sseEvent": { "sizeBytes": 250 },
+        "floodRatePerSec": 100,
+        "widgetCount": 20
+      },
+      "gates": [ "appliedEventsPerSec <= 5 * widgetCount", "eventsDroppedByCoalesce >= flood - (5 * widgetCount * 10)" ]
+    }
+  ],
+  "payloadCatalog": {
+    "widgetConfig": { "sizeBytes": 150, "fields": [ "id", "title", "type", "refreshSecs", "collapsed" ] },
+    "sseEvent": { "sizeBytes": 250, "fields": [ "id", "ts", "event", "widgetId", "seq", "payload" ] },
+    "widgetPreference": { "sizeBytes": 200, "fields": [ "widgetId", "key", "value", "updatedAt" ] },
+    "chartPoint": { "sizeBytes": 16, "fields": [ "t", "v" ] },
+    "sseHeartbeat": { "sizeBytes": 60, "fields": [ "ts", "hb" ] }
+  },
+  "instrumentation": {
+    "apis": [ "performance.now()", "NavigationTiming", "PaintTiming (FCP/LCP)", "PerformanceObserver (longtask, layout-shift)", "performance.memory (chrome)" ],
+    "logging": "One JSON line per run per metric; no request bodies, no API keys, no tokens."
+  },
+  "openItems": [
+    "Add a browser benchmark runner (Playwright/Puppeteer implied — would add a Node dependency; conflicts with PRD 12.1 'No Node build step' unless confined to CI tooling outside the repo binary). Decide where benchmark code lives before executing.",
+    "Confirm POR timing instrumentation definition before adding API timing scenarios.",
+    "Verify IndexedDB quota/behavior on target browsers (headless Chrome vs real user profiles)."
+  ]
+}
