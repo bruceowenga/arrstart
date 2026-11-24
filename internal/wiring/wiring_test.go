@@ -12,9 +12,6 @@ import (
 
 // fakeClient is a programmable wiring.Client for framework tests.
 type fakeClient struct {
-	muWaitHealthy  atomic.Bool
-	muConfigure    atomic.Bool
-	muVerify       atomic.Bool
 	waitHealthyErr atomic.Value // error
 	configureErr   atomic.Value
 	verifyErr      atomic.Value
@@ -43,9 +40,8 @@ func (f *fakeClient) err(v *atomic.Value) error {
 	return nil
 }
 
-func (f *fakeClient) setWaitHealthyErr(err error) { f.waitHealthyErr.Store(err) }
-func (f *fakeClient) setConfigureErr(err error)   { f.configureErr.Store(err) }
-func (f *fakeClient) setVerifyErr(err error)      { f.verifyErr.Store(err) }
+func (f *fakeClient) setConfigureErr(err error) { f.configureErr.Store(err) }
+func (f *fakeClient) setVerifyErr(err error)    { f.verifyErr.Store(err) }
 
 func TestStepString(t *testing.T) {
 	cases := map[Step]string{

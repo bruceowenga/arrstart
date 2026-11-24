@@ -102,12 +102,3 @@ func TestWriteDotEnvDedupsAndPreserves(t *testing.T) {
 		}
 	}
 }
-
-func mustRead(t *testing.T, path string) []byte {
-	t.Helper()
-	data, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read: %v", err)
-	}
-	return data
-}
