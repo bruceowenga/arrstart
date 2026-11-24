@@ -2,7 +2,10 @@
 
 Newest first, three lines per session.
 
-## 2026-11-24 WP3.8 Mock indexer and Gate 3 e2e test (PRD A5)
+## 2026-11-24 Task 2 CI hygiene (#25, uncommitted)
+Result: lint job now hard-fails if golangci-lint/shellcheck/markdownlint is missing (actions pinned by SHA; gofmt/go vet/go build added); `make check` FATALs on missing tools with `ALLOW_SKIP_LINT=1` escape hatch; `.golangci.yml` v1 enables gofmt linter; pr-title reruns on title edits.
+pr-title now also reruns on PR title edits (`pull_request: edited`).
+Next: commit on ci/hard-fail-tools, open PR, verify `gh pr checks` rerun on title edit; read-only branch-protection report.
 Result: tests/mock-indexer Go mock Torznab indexer (caps + tv/movie search returning only obviously-fake results; provider "mock-indexer", fake titles/IDs — no real indexer names or content, ADR-0009), httptest unit tests pass -race; Dockerfile (golang:1.24-alpine builder → alpine:3.20 non-root runtime) and throwaway docker-compose.yml (Prowlarr + mock indexer on a shared network). Additive AddIndexer(ctx, Indexer) on internal/wiring/prowlarr.Client calling Prowlarr POST /api/v1/indexer; Torznab field names probed against real linuxserver/prowlarr:3.0.2 (:19696) before trusting. Full wizard-driven Gate 3 e2e NOT verified yet — wizard/generator (WP1.x) not built; POST /api/v1/indexer schema probed live against real linuxserver/prowlarr:3.0.2 (:19696): appProfileId > 0, priority 1-50, baseUrl field, dial failures observed ("Name does not resolve", "Connection refused"); HTTP 201 registration needs a reachable mock endpoint which this session's shell blocked standing up, so end-to-end registration is NOT verified and nothing was registered or left running.
 Open: wizard-driven end-to-end Gate 3 (stack up via wizard, Seerr request → Radarr grab → qBittorrent) blocked on WP1.x wizard/headless mode (WP1.9); rewire idempotency (WP3.9).
 Next: WP3.9 rewire command and idempotency tests (PRD A10, C6).
