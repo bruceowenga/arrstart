@@ -205,8 +205,8 @@ These are not in the PRD yet and the plan depends on them:
 
 ### Phase 0: Foundations and spikes (Size: M total)
 
-- [ ] **WP0.1 Repo scaffold** [S]: MIT license, code of conduct, `.gitignore`, `Makefile`, pre-commit config, issue and PR templates, `CLAUDE.md` (section 7.2), empty directory layout from the PRD.
-- [ ] **WP0.2 CI skeleton** [S]: lint, unit, pr-title jobs. Green on an empty repo.
+- [x] **WP0.1 Repo scaffold** [S]: MIT license, code of conduct, `.gitignore`, `Makefile`, pre-commit config, issue and PR templates, `CLAUDE.md` (section 7.2), empty directory layout from the PRD.
+- [x] **WP0.2 CI skeleton** [S]: lint, unit, pr-title jobs. Green on an empty repo.
 - [x] **WP0.3 Spike S1: Servarr API keys** [S]: confirm env-var key injection (`APP__SECTION__KEY` style) works for Sonarr, Radarr, Prowlarr; fall back to reading `config.xml`. Findings in `docs/spikes/01-servarr-api-keys.md`.
 - [x] **WP0.4 Spike S2: qBittorrent credentials** [S]: how the current image handles the temporary random password; choose how we set a known credential.
 - [x] **WP0.5 Spike S3: Jellyfin headless setup** [M]: startup wizard via API, admin user, libraries.
@@ -371,7 +371,7 @@ Short files in `docs/adr/`, one per decision: context, decision, consequences. W
 - [x] ADR-0006: Seerr official image, `user:` and config ownership approach
 - [x] ADR-0007: Wizard drives `docker compose` by shelling out (vs Docker SDK)
 - [ ] ADR-0008: Windows default location (result of spike S5) — blocked until WP0.7 runs on the WP0.11 Windows VM
-- [ ] ADR-0009: MIT license; no indexers, media-management framing
+- [x] ADR-0009: MIT license; no indexers, media-management framing
 
 ---
 
