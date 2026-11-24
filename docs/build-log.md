@@ -2,9 +2,14 @@
 
 Newest first, three lines per session.
 
+## 2026-11-24 WP3.7 Seerr wiring client (PRD A8)
+Result: internal/wiring/seerr native Go client (WaitHealthy/Configure/Verify) over Seerr's /api/v1 with X-Api-Key auth via servarr transport; POST /api/v1/settings/{jellyfin,sonarr,radarr} applies connections (readOnly Jellyfin "name" omitted, idempotent upsert), GET settings re-checked by Verify; errSeerrNotInitialized sentinel with /setup + `arrstack rewire` guidance when not initialized; unconfigured (empty URL) connections skipped; trailing slash trimmed in New. Verified live against real seerr/seerr:v3.5.2 (:29055): GET /api/v1/status 200 no auth (WaitHealthy OK), X-Api-Key authenticates settings endpoints, settings writes return 403 while initialized=false → headless wiring blocked until the admin user is created once through the web UI at /setup (documented product gap per ADR-0006, surfaced by the client rather than hidden). httptest unit tests pass -race (wizard flow, idempotency implied by upsert, mismatch verify failure, not-initialized paths); golangci-lint clean; gofmt/go vet clean.
+Open: none — WP3.7 complete; WP3.x wiring clients all done.
+Next: WP4.x doctor/generator or per BUILD-PLAN ordering.
+
 ## 2026-11-24 WP3.6 Jellyfin wiring client (PRD A7)
 Result: internal/wiring/jellyfin native Go client (WaitHealthy/Configure/Verify) over Jellyfin's MediaBrowser auth scheme; headless wizard → admin user → API key → libraries verified live against real jellyfin/jellyfin:12.4 (:18889): POST /Startup/Configuration, GET /Startup/User placeholder → POST /Startup/User (body Name/Password/HasPassword) → POST /Startup/Complete → authenticated POST /Users/AuthenticateByName (body Pw; Authorization MediaBrowser Client/Device/DeviceId/Version + Token) → POST /Auth/Keys?app=arrstart → POST /Library/VirtualFolders?name=...&collectionType=... (body LibraryOptions.PathInfos); library paths /data/media/tv, /data/media/movies pre-created on disk in the container before library creation (Jellyfin validates existence). Idempotent re-Configure skips existing user/key/library paths; fresh-client Verify re-authenticates and re-checks wizard + library paths. httptest unit tests pass -race (wizard flow, idempotency, custom libraries, missing-library verify failure, bad-credentials verify failure); golangci-lint clean; gofmt/go vet clean.
-Open: WP3.7 Seerr wiring client (connect Jellyfin, Sonarr, Radarr; defaults) per A8 — one WP at a time.
+Open: none for Jellyfin wiring itself.
 Next: WP3.7 Seerr client (PRD A8).
 
 ## 2026-11-23 WP3.5 Prowlarr wiring client (PRD A5)
