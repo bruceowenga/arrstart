@@ -307,7 +307,7 @@ The wizard needs the Docker socket to create containers. That is root-equivalent
 ### Phase 3: Auto-wiring
 - [x] API client packages for Sonarr, Radarr, Prowlarr, qBittorrent, Jellyfin, Seerr
 - [x] Health waiting and retry logic
-- [ ] Generated API keys and credentials flow
+- [x] Generated API keys and credentials flow
 - [ ] Wire qBittorrent to Sonarr and Radarr, set root folders, naming, hardlinks
 - [ ] Wire Prowlarr to Sonarr and Radarr (no indexers added)
 - [x] Jellyfin admin user and libraries

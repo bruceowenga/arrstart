@@ -2,6 +2,11 @@
 
 Newest first, three lines per session.
 
+## 2026-11-24 WP3.2 Credentials and keys (PRD A1, A9)
+Result: internal/credentials package — AppSpec/Defaults for sonarr/radarr/prowlarr (SONARR__AUTH__APIKEY etc.), GenerateKey (32 bytes → 64-char hex via crypto/rand), Generate(specs)/GenerateDefaultKeys(), plus LoadDotEnv/WriteDotEnv with dedup against existing entries, sorted KEY=VALUE output, 0o600 perms, write-if-changed so idempotent re-runs change nothing. Unit tests (defaults, uniqueness, key format, missing-file load, parse/dedup, create/perms/preserve) pass -race; gofmt/go vet clean. No live-container verification needed — no app API calls; keys are generated locally and written to .env for later injection.
+Open: none — WP3.2 complete; WP3.1–3.7 all ticked in BUILD-PLAN.
+Next: WP3.8 Mock indexer and Gate 3 e2e test (BUILD-PLAN §5.2, tests/mock-indexer/).
+
 ## 2026-11-24 WP3.7 Seerr wiring client (PRD A8)
 Result: internal/wiring/seerr native Go client (WaitHealthy/Configure/Verify) over Seerr's /api/v1 with X-Api-Key auth via servarr transport; POST /api/v1/settings/{jellyfin,sonarr,radarr} applies connections (readOnly Jellyfin "name" omitted, idempotent upsert), GET settings re-checked by Verify; errSeerrNotInitialized sentinel with /setup + `arrstack rewire` guidance when not initialized; unconfigured (empty URL) connections skipped; trailing slash trimmed in New. Verified live against real seerr/seerr:v3.5.2 (:29055): GET /api/v1/status 200 no auth (WaitHealthy OK), X-Api-Key authenticates settings endpoints, settings writes return 403 while initialized=false → headless wiring blocked until the admin user is created once through the web UI at /setup (documented product gap per ADR-0006, surfaced by the client rather than hidden). httptest unit tests pass -race (wizard flow, idempotency implied by upsert, mismatch verify failure, not-initialized paths); golangci-lint clean; gofmt/go vet clean.
 Open: none — WP3.7 complete; WP3.x wiring clients all done.
