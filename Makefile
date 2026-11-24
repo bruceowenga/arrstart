@@ -28,11 +28,47 @@ docs-check:
 test:
 	$(GO) test ./... -race
 
-# Lint: Go, shell, PowerShell, markdown, commit titles.
-lint:
-	@if command -v golangci-lint >/dev/null 2>&1; then golangci-lint run; else echo "golangci-lint not installed; skipping"; fi
-	@if command -v shellcheck >/dev/null 2>&1; then shellcheck install.sh; else echo "shellcheck not installed; skipping install.sh"; fi
-	@if command -v markdownlint >/dev/null 2>&1; then markdownlint 'docs/**/*.md'; else echo "markdownlint not installed; skipping"; fi
+# Hard-lint: required tools (golangci-lint, shellcheck, markdownlint) must be
+# present — CI never skips a lint step. ALLOW_SKIP_LINT=1 is an explicit local
+# escape hatch: it prints a loud warning and continues without missing tools
+# instead of failing.
+LINT_TOOLS := golangci-lint shellcheck markdownlint
+lint: lint-tools lint-run
+
+lint-tools:
+	@missing=''; \
+	for t in $(LINT_TOOLS); do \
+		command -v $$t >/dev/null 2>&1 || missing="$$missing $$t"; \
+	done; \
+	if [ -n "$$missing" ]; then \
+		if [ "$$ALLOW_SKIP_LINT" = "1" ]; then \
+			echo ""; \
+			echo "######################################################################"; \
+			echo "WARNING: ALLOW_SKIP_LINT=1 — skipping missing lint tools:$$missing"; \
+			echo "CI hard-fails on these. Install to lint locally:"; \
+			echo "  golangci-lint: https://golangci-lint.run/welcome/install/"; \
+			echo "  shellcheck:    sudo apt-get install -y shellcheck"; \
+			echo "  markdownlint:  npm install -g markdownlint-cli"; \
+			echo "######################################################################"; \
+			echo ""; \
+			exit 0; \
+		fi; \
+		echo ""; \
+		echo "FATAL: required lint tool(s) missing:$$missing"; \
+		echo "make check will not pass without them (CI hard-fails on missing tools)."; \
+		echo "Install:"; \
+		echo "  golangci-lint: https://golangci-lint.run/welcome/install/"; \
+		echo "  shellcheck:    sudo apt-get install -y shellcheck"; \
+		echo "  markdownlint:  npm install -g markdownlint-cli"; \
+		echo "Or run locally with: ALLOW_SKIP_LINT=1 make check"; \
+		echo ""; \
+		exit 1; \
+	fi
+
+lint-run:
+	@if command -v golangci-lint >/dev/null 2>&1; then golangci-lint run; fi
+	@if command -v shellcheck >/dev/null 2>&1; then shellcheck install.sh; fi
+	@if command -v markdownlint >/dev/null 2>&1; then markdownlint 'docs/**/*.md'; fi
 
 clean:
 	rm -rf /bin/ /dist/

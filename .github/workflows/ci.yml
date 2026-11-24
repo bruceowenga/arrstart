@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+    types: [opened, edited, synchronize, reopened]
 
 permissions:
   contents: read
@@ -14,41 +15,59 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.24'
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84 # v6
         with:
-          version: latest
+          # Pinned tool version; was "latest" before this PR.
+          version: v1.64.5
 
       - name: shellcheck
         run: |
+          # Fail loudly if shellcheck cannot be installed -- never skip.
+          sudo apt-get update -y
+          sudo apt-get install -y shellcheck
           if [ -f install.sh ]; then
-            sudo apt-get update -y && sudo apt-get install -y shellcheck
             shellcheck install.sh
-          else
-            echo "install.sh not present; skipping shellcheck"
           fi
 
       - name: markdownlint
-        uses: igorshubovych/markdownlint-cli@v0.45.0
+        uses: igorshubovych/markdownlint-cli@192ad822316c3a22fb3d3cc8aa6eafa0b8488360 # v0.45.0
         with:
           config-file: .markdownlint.yaml
           files: 'docs/**/*.md'
+
+      - name: gofmt
+        run: |
+          # Hard fail on any unformatted file (non-empty gofmt -l output).
+          UNFORMATTED="$(gofmt -l .)"
+          if [ -n "$UNFORMATTED" ]; then
+            echo "gofmt violations:"
+            echo "$UNFORMATTED"
+            echo "Run 'gofmt -w .' (or 'make fmt') to fix."
+            exit 1
+          fi
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: go build ./...
 
   unit:
     name: unit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '1.24'
 
