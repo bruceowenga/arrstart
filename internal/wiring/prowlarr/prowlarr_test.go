@@ -217,6 +217,86 @@ func TestConfigureWithoutKeyAgainstKeyServerFails(t *testing.T) {
 	}
 }
 
+func TestAddIndexerSendsExpectedPayload(t *testing.T) {
+	var got indexerRequest
+	var authKey string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/indexer", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		authKey = r.Header.Get("X-Api-Key")
+		if authKey != "prowlarr-test-key" {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+			http.Error(w, "bad json", http.StatusBadRequest)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		var _ = json.NewEncoder(w).Encode(struct{ ID int }{ID: 7})
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	c := New(srv.URL, "prowlarr-test-key")
+	idx := Indexer{
+		Enable:         true,
+		Implementation: "Torznab",
+		ConfigContract: "TorznabSettings",
+		Name:           "mock-indexer",
+		AppProfileId:   1,
+		Priority:       50,
+		URL:            "http://mock-indexer:9999/api",
+		Categories:     []int{2000, 5000},
+	}
+	if err := c.AddIndexer(context.Background(), idx); err != nil {
+		t.Fatalf("AddIndexer: %v", err)
+	}
+	if authKey != "prowlarr-test-key" {
+		t.Errorf("X-Api-Key = %q, want %q", authKey, "prowlarr-test-key")
+	}
+	if got.Name != "mock-indexer" || got.AppProfileId != 1 || got.Priority != 50 || !got.Enable {
+		t.Errorf("top-level fields = %+v", got)
+	}
+	var baseUrl string
+	hasCats := false
+	for _, f := range got.Fields {
+		switch f.Name {
+		case "baseUrl":
+			baseUrl, _ = f.Value.(string)
+		case "categories":
+			hasCats = true
+		}
+	}
+	if baseUrl != "http://mock-indexer:9999/api" {
+		t.Errorf("fields baseUrl = %q, want http://mock-indexer:9999/api", baseUrl)
+	}
+	if !hasCats {
+		t.Errorf("fields missing categories: %+v", got.Fields)
+	}
+}
+
+func TestAddIndexerRejectsNonCreated(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/api/v1/indexer", func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "indexer exists", http.StatusConflict)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	c := New(srv.URL, "prowlarr-test-key")
+	idx := Indexer{Enable: true, Implementation: "Torznab", ConfigContract: "TorznabSettings", Name: "mock-indexer", AppProfileId: 1, Priority: 50, URL: "http://mock-indexer:9999/api"}
+	if err := c.AddIndexer(context.Background(), idx); err == nil {
+		t.Fatal("expected error for non-2xx response")
+	} else if !strings.Contains(err.Error(), "POST /api/v1/indexer returned 409") {
+		t.Errorf("unexpected error: %v", err)
+	}
+}
+
 func TestNewTrimsTrailingSlash(t *testing.T) {
 	c := New("http://127.0.0.1:9696/", "key")
 	if c.baseURL != "http://127.0.0.1:9696" {

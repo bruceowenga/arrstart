@@ -2,6 +2,11 @@
 
 Newest first, three lines per session.
 
+## 2026-11-24 WP3.8 Mock indexer and Gate 3 e2e test (PRD A5)
+Result: tests/mock-indexer Go mock Torznab indexer (caps + tv/movie search returning only obviously-fake results; provider "mock-indexer", fake titles/IDs — no real indexer names or content, ADR-0009), httptest unit tests pass -race; Dockerfile (golang:1.24-alpine builder → alpine:3.20 non-root runtime) and throwaway docker-compose.yml (Prowlarr + mock indexer on a shared network). Additive AddIndexer(ctx, Indexer) on internal/wiring/prowlarr.Client calling Prowlarr POST /api/v1/indexer; Torznab field names probed against real linuxserver/prowlarr:3.0.2 (:19696) before trusting. Full wizard-driven Gate 3 e2e NOT verified yet — wizard/generator (WP1.x) not built; POST /api/v1/indexer schema probed live against real linuxserver/prowlarr:3.0.2 (:19696): appProfileId > 0, priority 1-50, baseUrl field, dial failures observed ("Name does not resolve", "Connection refused"); HTTP 201 registration needs a reachable mock endpoint which this session's shell blocked standing up, so end-to-end registration is NOT verified and nothing was registered or left running.
+Open: wizard-driven end-to-end Gate 3 (stack up via wizard, Seerr request → Radarr grab → qBittorrent) blocked on WP1.x wizard/headless mode (WP1.9); rewire idempotency (WP3.9).
+Next: WP3.9 rewire command and idempotency tests (PRD A10, C6).
+
 ## 2026-11-24 WP3.2 Credentials and keys (PRD A1, A9)
 Result: internal/credentials package — AppSpec/Defaults for sonarr/radarr/prowlarr (SONARR__AUTH__APIKEY etc.), GenerateKey (32 bytes → 64-char hex via crypto/rand), Generate(specs)/GenerateDefaultKeys(), plus LoadDotEnv/WriteDotEnv with dedup against existing entries, sorted KEY=VALUE output, 0o600 perms, write-if-changed so idempotent re-runs change nothing. Unit tests (defaults, uniqueness, key format, missing-file load, parse/dedup, create/perms/preserve) pass -race; gofmt/go vet clean. No live-container verification needed — no app API calls; keys are generated locally and written to .env for later injection.
 Open: none — WP3.2 complete; WP3.1–3.7 all ticked in BUILD-PLAN.

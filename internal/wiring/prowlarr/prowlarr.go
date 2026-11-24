@@ -208,6 +208,80 @@ func (c *Client) addApplication(ctx context.Context, app App) error {
 	return nil
 }
 
+// indexerRequest is the JSON body for POST /api/v1/indexer. Field names match
+// the Prowlarr indexer resource shape (implementation "Torznab",
+// configContract "TorznabSettings"), confirmed by probing the pinned container.
+// The url field is the indexer's Torznab API endpoint; categories are the
+// Newznab category IDs Prowlarr syncs. No real indexer names or URLs are
+// ever hardcoded (repo rule, ADR-0009).
+type indexerRequest struct {
+	Enable         bool            `json:"enable"`
+	Implementation string          `json:"implementation"`
+	ConfigContract string          `json:"configContract"`
+	Name           string          `json:"name"`
+	AppProfileId    int             `json:"appProfileId"`
+	Priority        int             `json:"priority"`
+	Fields          []indexerField  `json:"fields"`
+}
+
+type indexerField struct {
+	Name  string `json:"name"`
+	Value any    `json:"value"`
+}
+
+// Indexer describes a Torznab indexer to add to Prowlarr. Only the fields
+// needed to register the mock indexer for Gate 3 e2e are populated.
+//
+// Schema confirmed against real linuxserver/prowlarr:3.0.2: POST
+// /api/v1/indexer requires top-level `enable`, `implementation`,
+// `configContract`, `name`, `appProfileId` (>0) and `priority` (1-50), plus a
+// `fields[]` entry named `baseUrl` holding the indexer's Torznab endpoint.
+// Prowlarr attempts a live connectivity check to `baseUrl` at add time, so the
+// URL must resolve from the Prowlarr container — in a single compose network
+// that's the mock indexer's internal URL. No real indexer names or URLs are
+// ever hardcoded (repo rule, ADR-0009).
+type Indexer struct {
+	Enable         bool
+	Implementation string
+	ConfigContract string
+	Name           string
+	AppProfileId   int
+	Priority       int
+	URL            string
+	Categories     []int
+}
+
+// AddIndexer registers a Torznab indexer with Prowlarr (POST /api/v1/indexer).
+// indexer.URL must be an address Prowlarr can reach (in a single compose
+// network, the mock indexer's internal URL, e.g. http://mock-indexer:9999/api).
+func (c *Client) AddIndexer(ctx context.Context, indexer Indexer) error {
+	fields := []indexerField{
+		{Name: "baseUrl", Value: indexer.URL},
+	}
+	if len(indexer.Categories) > 0 {
+		fields = append(fields, indexerField{Name: "categories", Value: indexer.Categories})
+	}
+	req := indexerRequest{
+		Enable:         indexer.Enable,
+		Implementation: indexer.Implementation,
+		ConfigContract: indexer.ConfigContract,
+		Name:           indexer.Name,
+		AppProfileId:   indexer.AppProfileId,
+		Priority:       indexer.Priority,
+		Fields:         fields,
+	}
+	resp, err := c.Post(ctx, "/api/v1/indexer", req)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return fmt.Errorf("prowlarr: POST /api/v1/indexer returned %s: %s", resp.Status, strings.TrimSpace(string(body)))
+	}
+	return nil
+}
+
 // Verify re-checks that each app registered by Configure is still present as a
 // Prowlarr application (matched by name).
 func (c *Client) Verify(ctx context.Context) error {
