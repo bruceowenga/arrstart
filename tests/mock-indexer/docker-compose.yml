@@ -1,0 +1,39 @@
+# Throwaway compose for Gate 3 mock-indexer verification against real Prowlarr.
+# Not part of the product; not committed to a real stack. Brings up Prowlarr
+# plus the mock Torznab indexer on a shared compose network so a test/e2e
+# helper can register the mock indexer via AddIndexer (POST /api/v1/indexer).
+#
+# Run:
+#   cd tests/mock-indexer
+#   docker compose build mock-indexer
+#   docker compose up -d
+#   # register the mock indexer against Prowlarr (API key from PROWLARR_API_KEY)
+#   docker compose down -v
+services:
+  mock-indexer:
+    build:
+      context: ..
+      dockerfile: mock-indexer/Dockerfile
+    ports:
+      - "19999:9999"
+    networks:
+      - arr-net
+    restart: unless-stopped
+
+  prowlarr:
+    image: linuxserver/prowlarr:3.0.2
+    ports:
+      - "19796:9696"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+    volumes:
+      - ./scratch/prowlarr:/config
+    networks:
+      - arr-net
+    restart: unless-stopped
+
+networks:
+  arr-net:
+    driver: bridge

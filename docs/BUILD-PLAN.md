@@ -260,7 +260,7 @@ Order matters: wire the stack from the bottom up.
 - [x] **WP3.5 Prowlarr client** [M]: app links to Sonarr and Radarr, no indexers added. `A5`
 - [x] **WP3.6 Jellyfin client** [L]: admin user, libraries. `A7`
 - [x] **WP3.7 Seerr client** [L]: connect Jellyfin, Sonarr, Radarr; defaults. `A8`
-- [ ] **WP3.8 Mock indexer and Gate 3 e2e test** [L]: section 5.2.
+- [x] **WP3.8 Mock indexer and Gate 3 e2e test** [L]: section 5.2.
 - [ ] **WP3.9 `rewire` command and idempotency tests** [M]: `A10`, `C6`
 - [ ] **WP3.10 Wiring summary screen** [S]: per-step results in the wizard.
 
