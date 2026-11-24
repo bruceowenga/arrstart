@@ -253,8 +253,8 @@ Build as **vertical slices**: get a thin end-to-end path working first, then wid
 
 Order matters: wire the stack from the bottom up.
 
-- [ ] **WP3.1 Wiring framework** [M]: `WaitHealthy/Configure/Verify` interface, retries with backoff, per-step result reporting, failure isolation. `A2`, `A10`, `A11`
-- [ ] **WP3.2 Credentials and keys** [M]: pre-generated API keys, one admin credential, `.env` storage, permissions. `A1`, `A9`
+- [x] **WP3.1 Wiring framework** [M]: `WaitHealthy/Configure/Verify` interface, retries with backoff, per-step result reporting, failure isolation. `A2`, `A10`, `A11`
+- [x] **WP3.2 Credentials and keys** [M]: pre-generated API keys, one admin credential, `.env` storage, permissions. `A1`, `A9`
 - [x] **WP3.3 qBittorrent client** [M]: save path, categories, known credential. `A6`
 - [x] **WP3.4 Sonarr and Radarr clients** [L]: download client, root folders, naming, hardlinks. `A3`, `A4`
 - [x] **WP3.5 Prowlarr client** [M]: app links to Sonarr and Radarr, no indexers added. `A5`
