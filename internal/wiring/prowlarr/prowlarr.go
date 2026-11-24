@@ -215,13 +215,13 @@ func (c *Client) addApplication(ctx context.Context, app App) error {
 // Newznab category IDs Prowlarr syncs. No real indexer names or URLs are
 // ever hardcoded (repo rule, ADR-0009).
 type indexerRequest struct {
-	Enable         bool            `json:"enable"`
-	Implementation string          `json:"implementation"`
-	ConfigContract string          `json:"configContract"`
-	Name           string          `json:"name"`
-	AppProfileId    int             `json:"appProfileId"`
-	Priority        int             `json:"priority"`
-	Fields          []indexerField  `json:"fields"`
+	Enable         bool           `json:"enable"`
+	Implementation string         `json:"implementation"`
+	ConfigContract string         `json:"configContract"`
+	Name           string         `json:"name"`
+	AppProfileId   int            `json:"appProfileId"`
+	Priority       int            `json:"priority"`
+	Fields         []indexerField `json:"fields"`
 }
 
 type indexerField struct {

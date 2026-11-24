@@ -46,7 +46,7 @@ func (m *MockIndexer) Handler() http.Handler {
 	return mux
 }
 
-func isTV(cats []string) bool   { return anyCat(cats, tvCats) }
+func isTV(cats []string) bool    { return anyCat(cats, tvCats) }
 func isMovie(cats []string) bool { return anyCat(cats, movieCats) }
 
 func anyCat(cats []string, set map[string]bool) bool {
@@ -130,12 +130,12 @@ func filterByQuery(items []searchItem, q string) []searchItem {
 
 // searchItem is a fake Torznab result.
 type searchItem struct {
-	title string
-	guid  string
-	imdb  string
-	tvdb  string
-	cat   string // Newznab category ID as a string
-	size  int64
+	title   string
+	guid    string
+	imdb    string
+	tvdb    string
+	cat     string // Newznab category ID as a string
+	size    int64
 	seeders int
 	peers   int
 }
@@ -150,10 +150,10 @@ func searchXML(items []searchItem) []byte {
 		Version: "2.0",
 		NS:      torznabNS,
 		Channel: channel{
-			Title:     "Mock Indexer",
-			Link:      "http://mock-indexer:9999",
+			Title:       "Mock Indexer",
+			Link:        "http://mock-indexer:9999",
 			Description: "Mock Torznab indexer for arrstart Gate 3 e2e",
-			Items:     itemsToXML(items),
+			Items:       itemsToXML(items),
 		},
 	}
 	out, err := xml.MarshalIndent(v, "", "  ")
@@ -202,15 +202,15 @@ type channelItem struct {
 
 type attr struct {
 	XMLName xml.Name `xml:"http://torznab.com/schemas/2015/manifest attr"`
-	Name  string `xml:"name,attr"`
-	Value string `xml:"value,attr"`
+	Name    string   `xml:"name,attr"`
+	Value   string   `xml:"value,attr"`
 }
 
 type channel struct {
-	XMLName     xml.Name `xml:"channel"`
-	Title       string   `xml:"title"`
-	Link        string   `xml:"link"`
-	Description string   `xml:"description"`
+	XMLName     xml.Name      `xml:"channel"`
+	Title       string        `xml:"title"`
+	Link        string        `xml:"link"`
+	Description string        `xml:"description"`
 	Items       []channelItem `xml:"item"`
 }
 
@@ -223,14 +223,14 @@ func capsXML() []byte {
 		Link    string   `xml:"link"`
 		Limits  limits   `xml:"limits"`
 	}{
-		Title:      "Mock Indexer",
-		Server:     "",
-		Desc:       "Mock Torznab indexer for arrstart Gate 3 e2e",
-		Link:       "http://mock-indexer:9999",
+		Title:  "Mock Indexer",
+		Server: "",
+		Desc:   "Mock Torznab indexer for arrstart Gate 3 e2e",
+		Link:   "http://mock-indexer:9999",
 		Limits: limits{
-			TVSearch:   limit{Name: "TV Search", Enabled: true, SupportedParams: "q,season,ep"},
-			Movie:      limit{Name: "Movie Search", Enabled: true, SupportedParams: "q"},
-			Search:     limit{Name: "Search", Enabled: true, SupportedParams: "q,cat"},
+			TVSearch: limit{Name: "TV Search", Enabled: true, SupportedParams: "q,season,ep"},
+			Movie:    limit{Name: "Movie Search", Enabled: true, SupportedParams: "q"},
+			Search:   limit{Name: "Search", Enabled: true, SupportedParams: "q,cat"},
 		},
 	}
 	out, err := xml.MarshalIndent(v, "", "  ")
@@ -242,15 +242,15 @@ func capsXML() []byte {
 }
 
 type limits struct {
-	XMLName xml.Name `xml:"limits"`
-	TVSearch limit `xml:"tvsearch"`
-	Movie   limit `xml:"movie"`
-	Search  limit `xml:"search"`
+	XMLName  xml.Name `xml:"limits"`
+	TVSearch limit    `xml:"tvsearch"`
+	Movie    limit    `xml:"movie"`
+	Search   limit    `xml:"search"`
 }
 
 type limit struct {
-	Name          string `xml:"name,attr"`
-	Enabled       bool   `xml:"enabled,attr"`
+	Name            string `xml:"name,attr"`
+	Enabled         bool   `xml:"enabled,attr"`
 	SupportedParams string `xml:"supportedParams,attr"`
 }
 
