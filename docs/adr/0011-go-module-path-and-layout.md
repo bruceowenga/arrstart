@@ -20,6 +20,6 @@ The PRD originally split `doctor` across `/doctor` and `/wizard/internal/doctor`
 
 ## Consequences
 
-- The one binary image (`ghcr.io/bruceowenga/arrstart`) doubles as wizard container and helper CLI (`arrstack doctor`, `arrstack update`, etc.), matching ADR-0010's single-image decision.
+- The one binary image (`ghcr.io/bruceowenga/arrstart`) doubles as wizard container and helper CLI (`arrstart doctor`, `arrstart update`, etc.), matching ADR-0010's single-image decision.
 - Adding a new embedded asset requires an `embed.go` gate in its directory — a small, repeatable convention worth documenting in CONTRIBUTING.md.
 - `internal/` keeps the API surface small; forks can still copy code, which is fine for an open-source installer.

@@ -214,7 +214,7 @@ These are not in the PRD yet and the plan depends on them:
 - [ ] **WP0.7 Spike S5: Windows hardlinks** [M]: run the hardlink test on NTFS bind mount vs WSL-native path; apply the PRD 12.3 decision rule.
 - [x] **WP0.8 Spike S6: HTMX + SSE progress screen** [S]: prove the live progress screen pattern.
 - [x] **WP0.9 Pin image tags** [S]: choose and record exact tags for every app image in `templates/versions.yaml`.
-- [ ] **WP0.10 Decision records** [S]: write ADRs 0001 to 0008 (section 8).
+- [x] **WP0.10 Decision records** [S]: ADRs 0001–0007 and 0009–0012 written; ADR-0008 (Windows default location) deferred until WP0.7 runs on the WP0.11 Windows VM (still deferred).
 - [ ] **WP0.11 Test VMs** [M]: scripted Ubuntu VM and Windows 11 VM with snapshots; document how to reset.
 - [x] **WP0.12 Name** [S]: pick final name, claim GitHub org/repo, Docker Hub namespace, domain. Namespace/registry decided in ADR-0010 (GHCR only, ghcr.io/bruceowenga/arrstart, pinned tags never latest); registry-path Go constant added (internal/registry/registry.go). Dockerfile + `.github/workflows/publish.yml` added: builds the minimal bootstrap image and pushes it to `ghcr.io/${{ github.repository_owner }}/arrstart` using the workflow-scoped `GITHUB_TOKEN` with `packages: write` (no PAT), actions pinned by commit SHA, and the `org.opencontainers.image.source` OCI label. First public push v0.0.0-ci.1 done; anonymous pull verified (`docker pull ghcr.io/bruceowenga/arrstart:0.0.0-ci.1` after `docker logout ghcr.io`).
 
@@ -222,20 +222,21 @@ These are not in the PRD yet and the plan depends on them:
 
 ### Phase 1: Linux MVP (Size: L total)
 
-Build as **vertical slices**: get a thin end-to-end path working first, then widen.
+Build as **vertical slices**: get a thin end-to-end path working first, then widen. The apply engine (headless) comes before the wizard UI so CI e2e and `Gate 1` can run without any browser screen.
 
-- [ ] **WP1.1 Wizard skeleton** [M]: HTTP server, localhost bind, one-time token (W8), health endpoint, multi-arch Dockerfile. `W8`
-- [ ] **WP1.2 Hardware detection** [S]: RAM, CPU, free disk; tier logic. `B6`, `W3`
+- [ ] **WP1.1a Apply engine (headless)** [M]: **NEW**. `cmd/arrstart` subcommands (`apply --answers answers.yaml`, `wizard` default, `version`); answers.yaml → `docker-compose.yml` + `.env` → `docker compose up -d` → health waits → wiring runner (WaitHealthy/Configure/Verify) → printed Summary. Headless first so CI e2e and reproducible bug reports work without a UI. `W9`, `A10`
 - [ ] **WP1.3 Template format** [M]: per-app fragment schema (ports, volumes, env, healthcheck, RAM estimate, slot type for media server) plus Sonarr, Radarr, Prowlarr, qBittorrent, Jellyfin, Seerr fragments. `G1`, `G5`, `G8`
 - [ ] **WP1.4 Generator** [L]: merge fragments, ports, PUID/PGID/`user:`, TZ, idempotent diff, golden tests for every preset. `G1` to `G8`
 - [ ] **WP1.5 Folder layout** [S]: create single-root layout with correct ownership. `L1`, `L2`
-- [ ] **WP1.6 `install.sh`** [L]: Docker detection and install (Debian/Ubuntu), folder prompt, launch wizard, open browser. `B1` to `B3`, `B5`, `B7`, `B8`
+- [ ] **WP1.11 CI Gate 1: headless apply on clean Ubuntu** [M]: **NEW**. CI job runs `arrstart apply --answers answers.yaml` on a clean Ubuntu VM and asserts containers healthy and wiring summary green. UI not required for Gate 1. `B1` to `B3`, `W9`, Gate 1
+- [ ] **WP1.2 Hardware detection** [S]: RAM, CPU, free disk; tier logic. `B6`, `W3`
+- [ ] **WP1.1 Wizard skeleton** [M]: HTTP server, localhost bind, one-time token (W8), health endpoint, multi-arch Dockerfile. `W8`
 - [ ] **WP1.7 Wizard UI: select and review** [M]: preset screen, app selection with descriptions, review screen. `W1` to `W4`
 - [ ] **WP1.8 Deploy and progress** [L]: drive `docker compose`, health-based progress over SSE, plain-English errors. `W5`, `W6`
-- [ ] **WP1.9 Headless mode** [M]: `--answers answers.yaml`; wire into `make e2e` and CI. (`W9`)
-- [ ] **WP1.10 Finish and helper wrapper** [M]: final screen stub, wizard self-exit, install `arrstack.sh`. `B9`, `W7`
+- [ ] **WP1.6 `install.sh`** [L]: Docker detection and install (Debian/Ubuntu), folder prompt, launch wizard, open browser. `B1` to `B3`, `B5`, `B7`, `B8`
+- [ ] **WP1.10 Finish and helper wrapper** [M]: final screen stub, wizard self-exit, install `arrstart.sh`. `B9`, `W7`
 
-**Gate 1:** on a clean Ubuntu VM, one line produces running, healthy, unconnected containers with the correct folder layout. Tag `v0.0.1-alpha.1`.
+**Gate 1:** `arrstart apply --answers answers.yaml` runs headless on a clean Ubuntu VM and ends with running, healthy, wired containers and the correct folder layout; verified by CI on every PR. No wizard screen required. Tag `v0.0.1-alpha.1`.
 
 ### Phase 2: Windows (Size: L total)
 
@@ -264,7 +265,7 @@ Order matters: wire the stack from the bottom up.
 - [ ] **WP3.9 `rewire` command and idempotency tests** [M]: `A10`, `C6`
 - [ ] **WP3.10 Wiring summary screen** [S]: per-step results in the wizard.
 
-**Gate 3:** the section 5.2 scenario passes in CI with zero manual settings changes. Tag `v0.0.3-alpha.1`.
+**Gate 3:** the section 5.2 scenario passes **headless** in CI with zero manual settings changes (mock indexer added by the test; no real indexer). Tag `v0.0.3-alpha.1`.
 
 ### Phase 4: Quality of life (Size: L total)
 
@@ -372,6 +373,10 @@ Short files in `docs/adr/`, one per decision: context, decision, consequences. W
 - [x] ADR-0007: Wizard drives `docker compose` by shelling out (vs Docker SDK)
 - [ ] ADR-0008: Windows default location (result of spike S5) — blocked until WP0.7 runs on the WP0.11 Windows VM
 - [x] ADR-0009: MIT license; no indexers, media-management framing
+- [x] ADR-0010: Registry, image name, and namespace (GHCR only, `ghcr.io/bruceowenga/arrstart`, pinned tags never latest)
+- [x] ADR-0011: Go module path and repo layout
+- [x] ADR-0012: Scaffold conventions (WP0.1)
+- [ ] ADR-0013: Apply engine shared by headless mode and wizard UI (`arrstart apply --answers`) — proposed
 
 ---
 
