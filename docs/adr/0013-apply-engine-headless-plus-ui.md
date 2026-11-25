@@ -1,6 +1,6 @@
 # ADR-0013: Apply engine shared by headless mode and wizard UI
 
-Status: Proposed (not yet decided — awaiting user approval in PR #27).
+Status: Accepted by the project owner, 2026-11-25.
 
 ## Context
 
