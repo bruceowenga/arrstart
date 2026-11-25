@@ -223,7 +223,7 @@ Trust boundary: wizard → browser, same-origin, localhost only; one long-lived 
 | Instrumentation | Per-endpoint histograms (p50/p95/p99) at API edge middleware; correlation ID per request propagated to SSE events where useful |
 | What to time | Wiring steps (`WaitHealthy/Configure/Verify`), app API calls, compose generation; **not** every widget query on the bus (the bus aggregates) |
 | Privacy/security | Never log API keys, tokens, or full request bodies; redact in diagnostic output (doctor already redacts reports) |
-| Exposure | Timing summary available via `arrstack status` / doctor output, not over the wizard HTTP surface to unauthenticated token holders beyond what the token allows |
+| Exposure | Timing summary available via `arrstart status` / doctor output, not over the wizard HTTP surface to unauthenticated token holders beyond what the token allows |
 
 ---
 

@@ -2,6 +2,12 @@
 
 Newest first, three lines per session.
 
+## 2026-11-25 Docs-only: re-baseline plan around headless apply engine (PR #27)
+
+Result: BUILD-PLAN Phase 1 re-ordered: WP1.1a apply engine (headless, NEW), WP1.3 templates, WP1.4 generator, WP1.5 layout, WP1.11 CI headless apply (Gate 1, NEW), WP1.2 hardware, WP1.1 wizard skeleton, WP1.7 UI screens, WP1.8 deploy/SSE progress, WP1.6 install.sh, WP1.10 finish/helper wrapper; standalone WP1.9 removed (content folded into WP1.1a, W9 kept). Gate 1 = `arrstart apply --answers answers.yaml` headless on clean Ubuntu, healthy + wired containers, verified by CI every PR; Gate 3 = section 5.2 scenario headless with mock indexer, zero manual steps. PRD: Goal 3 reworded (CI verification planned at Gate 1 + Gate 3, neither green yet); W9 headless mode (§10.2); B10 Windows edition/WSL2/virtualization check (§10.1). NEW docs/adr/0013-apply-engine-headless-plus-ui.md marked Status: Proposed — not yet decided; PRD §17 and BUILD-PLAN §8 list it unticked/proposed. Docs/adr/0013 reapplied as proposed; BUILD-PLAN §8 ADR-0010/0011/0012 ticked, ADR-0008 deferred, WP0.10 ticked with caveat. No code changes; all "verified" claims name scripts/CI steps only. `arrstack` → `arrstart` everywhere (helper names now `arrstart.sh`/`arrstart.ps1`).
+Open: none (docs-only).
+Next: commit (`docs: re-baseline plan around a headless walking skeleton`, Refs: G3, W9, B10, W8, A10; WP1.x planning) and open PR #27 with a file list in the description.
+
 ## 2026-11-24 Task 2 CI hygiene (PR #26)
 Result: lint job now hard-fails if golangci-lint/shellcheck/markdownlint is missing (actions pinned by SHA; gofmt/go vet/go build added); `make check` FATALs on missing tools with `ALLOW_SKIP_LINT=1` escape hatch; `.golangci.yml` v1 enables gofmt linter; pr-title reruns on title edits.
 Next: none, merged
@@ -17,7 +23,7 @@ Open: none — WP3.2 complete; WP3.1–3.7 all ticked in BUILD-PLAN.
 Next: WP3.8 Mock indexer and Gate 3 e2e test (BUILD-PLAN §5.2, tests/mock-indexer/).
 
 ## 2026-11-24 WP3.7 Seerr wiring client (PRD A8)
-Result: internal/wiring/seerr native Go client (WaitHealthy/Configure/Verify) over Seerr's /api/v1 with X-Api-Key auth via servarr transport; POST /api/v1/settings/{jellyfin,sonarr,radarr} applies connections (readOnly Jellyfin "name" omitted, idempotent upsert), GET settings re-checked by Verify; errSeerrNotInitialized sentinel with /setup + `arrstack rewire` guidance when not initialized; unconfigured (empty URL) connections skipped; trailing slash trimmed in New. Verified live against real seerr/seerr:v3.5.2 (:29055): GET /api/v1/status 200 no auth (WaitHealthy OK), X-Api-Key authenticates settings endpoints, settings writes return 403 while initialized=false → headless wiring blocked until the admin user is created once through the web UI at /setup (documented product gap per ADR-0006, surfaced by the client rather than hidden). httptest unit tests pass -race (wizard flow, idempotency implied by upsert, mismatch verify failure, not-initialized paths); golangci-lint clean; gofmt/go vet clean.
+Result: internal/wiring/seerr native Go client (WaitHealthy/Configure/Verify) over Seerr's /api/v1 with X-Api-Key auth via servarr transport; POST /api/v1/settings/{jellyfin,sonarr,radarr} applies connections (readOnly Jellyfin "name" omitted, idempotent upsert), GET settings re-checked by Verify; errSeerrNotInitialized sentinel with /setup + `arrstart rewire` guidance when not initialized; unconfigured (empty URL) connections skipped; trailing slash trimmed in New. Verified live against real seerr/seerr:v3.5.2 (:29055): GET /api/v1/status 200 no auth (WaitHealthy OK), X-Api-Key authenticates settings endpoints, settings writes return 403 while initialized=false → headless wiring blocked until the admin user is created once through the web UI at /setup (documented product gap per ADR-0006, surfaced by the client rather than hidden). httptest unit tests pass -race (wizard flow, idempotency implied by upsert, mismatch verify failure, not-initialized paths); golangci-lint clean; gofmt/go vet clean.
 Open: none — WP3.7 complete; WP3.x wiring clients all done.
 Next: WP3.1 Wiring framework (PRD A2, A10, A11).
 

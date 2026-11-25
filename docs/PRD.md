@@ -1,6 +1,6 @@
 # PRD: Arr Stack Installer
 
-> Working title: `arrstack-easy` (placeholder, see Open Questions)
+> Working title: `arrstart-easy` (placeholder, see Open Questions)
 > Status: Draft v1.1 (open questions resolved, see section 17)
 > How to use this doc: every `- [ ]` is a checkable task. Phases are ordered; each ends with an acceptance gate.
 
@@ -20,7 +20,7 @@ A GitHub repo that lets someone with no Docker experience go from "nothing insta
 
 1. **Zero-to-working in under 20 minutes** on a fresh Windows 11 or Ubuntu machine, with no manual config file editing.
 2. **No Docker knowledge required.** The tool installs Docker if missing and explains what it is doing in plain language.
-3. **Apps arrive already connected.** After install, a user can open Seerr, request a movie, and the request flows to Radarr and the download client without the user touching a settings page.
+3. **Apps arrive already connected.** Wiring runs headless as part of install (`arrstart apply --answers answers.yaml`) and is re-runnable idempotently (`arrstart rewire`); after install, opening Seerr and requesting a movie sends the request to Radarr and the download client with no settings-page changes. CI verification is planned at Gate 1 (headless apply, healthy stack on clean Ubuntu) and Gate 3 (Seerr → Radarr → mock Torznab indexer → qBittorrent grab); neither gate is green yet.
 4. **Correct by default.** Single-root `/data` layout, correct permissions, hardlink-friendly.
 5. **No lock-in.** Output is a plain `docker-compose.yml` and `.env` the user owns and can edit.
 6. **Fit for old hardware.** Presets scale to the machine.
@@ -71,7 +71,7 @@ A GitHub repo that lets someone with no Docker experience go from "nothing insta
 6. Wizard writes `docker-compose.yml` and `.env`, pulls images, starts containers, and shows a **live progress screen** driven by health checks.
 7. Wizard **auto-wires** the apps and shows each step as it completes.
 8. Wizard finishes with a **home page and "what to do next" checklist**, then shuts itself down.
-9. A small helper command (`arrstack`) stays on the machine for `doctor`, `update`, `backup`, `add`, and `uninstall`.
+9. A small helper command (`arrstart`) stays on the machine for `doctor`, `update`, `backup`, `add`, and `uninstall`.
 
 ---
 
@@ -106,7 +106,8 @@ IDs are for traceability in issues and PRs.
 - **B6** Detect hardware (RAM, CPU cores, free disk) and pass results to the wizard.
 - **B7** Launch the wizard container with the media root, host OS, PUID/PGID (Linux/macOS), and hardware info as env vars.
 - **B8** Pick a free port (default 8765), open the default browser.
-- **B9** Install the `arrstack` helper wrapper script (`arrstack.sh` / `arrstack.ps1`) on the user's PATH or in the install folder.
+- **B9** Install the `arrstart` helper wrapper script (`arrstart.sh` / `arrstart.ps1`) on the user's PATH or in the install folder.
+- **B10** `install.ps1` checks the Windows edition and virtualization state before installing Docker Desktop: Windows Home requires WSL2 / Virtual Machine Platform enabled (with reboot and resume); warn if hardware virtualization is disabled.
 
 ### 10.2 Wizard
 - **W1** Preset selection: Movies only, Family media server, Full automation, Custom.
@@ -117,6 +118,7 @@ IDs are for traceability in issues and PRs.
 - **W6** Error screen in plain English with a "copy diagnostics" button.
 - **W7** Final screen: service links, generated credentials, and a "what to do next" checklist.
 - **W8** Wizard binds to localhost only and requires a random one-time token in the URL (see Security).
+- **W9** Headless mode: the wizard binary accepts `--answers answers.yaml` and runs the full apply flow with no browser. Required for CI e2e and reproducible bug reports; the wizard UI writes the same answers file.
 
 ### 10.3 Generator
 - **G1** Template-per-app compose fragments, merged based on selection.
@@ -159,7 +161,7 @@ IDs are for traceability in issues and PRs.
 - **A7** Jellyfin: complete the startup wizard via API with an admin user; add libraries for `/data/media/tv` and `/data/media/movies`.
 - **A8** Seerr: connect to Jellyfin, Sonarr, Radarr; set default quality profile and root folders.
 - **A9** Enable authentication on the arr apps with one generated admin credential, shown once on the final screen and stored in `.env`.
-- **A10** Every wiring step is idempotent and re-runnable (`arrstack rewire`).
+- **A10** Every wiring step is idempotent and re-runnable (`arrstart rewire`).
 - **A11** Failures in one step do not abort the others; report a summary at the end.
 
 ### 10.5b Optional extras
@@ -167,7 +169,7 @@ IDs are for traceability in issues and PRs.
 - **X2** Tailscale: auth key or login link flow; gives Seerr/Jellyfin remote access with no port forwarding.
 - **X3** Homepage dashboard: generated `services.yaml` with every service link and widgets using the generated API keys.
 
-### 10.6 Helper CLI (`arrstack`)
+### 10.6 Helper CLI (`arrstart`)
 - **C1** `doctor`: diagnose and explain common failures (see 11.1).
 - **C2** `status`: container health and URLs.
 - **C3** `update`: pull new images and recreate containers, with a pre-update config backup.
@@ -228,7 +230,7 @@ Plain-English checks with a suggested fix for each:
 - **Templates:** compose fragments per app, one file each, with metadata (ports, volumes, env, health check, RAM estimate).
 - **Wiring engine:** native Go clients, one package per app, with an interface: `WaitHealthy()`, `Configure()`, `Verify()`. Only the small set of calls needed (download client, root folders, Prowlarr app links, Seerr connections). No Buildarr dependency.
 - **Doctor:** shares the same API clients as wiring, so a check and a fix use the same code.
-- **Helper wrapper:** runs the wizard image with a subcommand (`docker run --rm ... arrstack doctor`).
+- **Helper wrapper:** runs the wizard image with a subcommand (`docker run --rm ... arrstart doctor`).
 
 ### 12.2 Why Docker socket access, and the risk
 The wizard needs the Docker socket to create containers. That is root-equivalent on the host, so:
@@ -255,7 +257,7 @@ The wizard needs the Docker socket to create containers. That is root-equivalent
 
 ### 12.5 Versioning and updates
 - [ ] Images pinned to specific tags in generated compose
-- [ ] Wizard image versioned with the repo; `arrstack update` checks for new wizard releases
+- [ ] Wizard image versioned with the repo; `arrstart update` checks for new wizard releases
 - [ ] Wiring code tested against the pinned app versions in CI
 
 ---
@@ -291,7 +293,7 @@ The wizard needs the Docker socket to create containers. That is root-equivalent
 - [ ] Port conflict auto-fallback
 - [ ] Wizard self-exit and helper wrapper install
 
-**Gate 1:** on a clean Ubuntu VM, one line produces running, healthy, unconnected containers with correct folder layout.
+**Gate 1:** `arrstart apply --answers answers.yaml` runs headless on a clean Ubuntu VM and produces running, healthy, wired containers with the correct layout; verified by CI on every PR. The wizard UI is optional for Gate 1.
 
 ### Phase 2: Windows
 - [ ] `install.ps1`: Docker check and winget install
@@ -409,6 +411,7 @@ Automated:
 - [x] **Wizard UI stack:** HTMX + Go templates, SSE for progress. No Node build step.
 - [x] **Wiring:** native Go clients for the narrow set of calls needed. Buildarr is Python and adds a runtime dependency; Recyclarr/Configarr are quality-profile tools, kept as an optional post-v1 add-on.
 - [x] **Media server:** Jellyfin only for v1 (open source, no account, headless setup). Media server is a swappable slot so Plex/Emby can be added later.
+- [ ] **Headless apply engine first:** `arrstart apply --answers answers.yaml` is the primary install path; the HTMX wizard is a layer on top that writes the same answers file (ADR-0013, proposed — not yet decided). CI e2e runs headless, so Gate 1 and Gate 3 can be verified before any wizard screen exists. With W9.
 - [x] **VPN providers:** no long hardcoded list. Start with Mullvad and ProtonVPN plus a custom WireGuard/OpenVPN config option. Off by default, labelled advanced. Add more via community PRs.
 - [x] **License:** MIT. (Apache-2.0 only if an explicit patent grant becomes important. The tool only calls app APIs and generates compose files, so Sonarr/Radarr GPL licensing does not apply.)
 
@@ -429,10 +432,13 @@ install.ps1
 go.mod               # module github.com/bruceowenga/arrstart
 Makefile
 CLAUDE.md
-cmd/arrstart/main.go # subcommands: wizard (default), doctor, status,
-                      # update, backup, add, remove, rewire, uninstall
+cmd/arrstart/main.go # subcommands: wizard (default), apply --answers answers.yaml
+                      # (headless), version, doctor, status, update, backup,
+                      # add, remove, rewire, uninstall
 internal/
   generator/         # + testdata/ golden files
+  apply/             # answers.yaml → compose + .env → docker compose up →
+                      # wiring runner → Summary; shared by `apply` and wizard UI
   wiring/            # sonarr, radarr, prowlarr, qbittorrent, jellyfin, seerr
   doctor/            # checks + fix text together
   hardware/
