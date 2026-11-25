@@ -1,0 +1,33 @@
+app: qbittorrent
+slot: download-client
+image: qbittorrent   # key into templates/versions.yaml images map (pinned tag, never latest)
+ports:
+  - container: 8080
+    host: 8080
+volumes:
+  - host: "<root>/config/qbittorrent"
+    container: /config
+  - host: "<root>/data"
+    container: /data
+environment:
+  - name: PUID
+    value: "${PUID}"
+  - name: PGID
+    value: "${PGID}"
+  - name: TZ
+    value: "${TZ}"
+healthcheck:
+  test:
+    - CMD
+    - curl
+    - -f
+    - http://localhost:8080/
+  interval: 30s
+  timeout: 10s
+  retries: 3
+ram_estimate_mb: 250
+user_rules:
+  os:
+    - linux
+    - darwin
+  puid_pgid: true
