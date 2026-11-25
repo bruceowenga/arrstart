@@ -225,6 +225,13 @@ These are not in the PRD yet and the plan depends on them:
 Build as **vertical slices**: get a thin end-to-end path working first, then widen. The apply engine (headless) comes before the wizard UI so CI e2e and `Gate 1` can run without any browser screen.
 
 - [ ] **WP1.1a Apply engine (headless)** [M]: **NEW**. `cmd/arrstart` subcommands (`apply --answers answers.yaml`, `wizard` default, `version`); answers.yaml → `docker-compose.yml` + `.env` → `docker compose up -d` → health waits → wiring runner (WaitHealthy/Configure/Verify) → printed Summary. Headless first so CI e2e and reproducible bug reports work without a UI. `W9`, `A10`
+    - Resolve stage: done (answers.yaml v1, strict decoding, validation, Plan)
+    - Generate stage: pending (waits on WP1.3 templates, WP1.4 generator)
+    - ComposeUp stage: done (real `docker compose up -d` via injectable exec runner per ADR-0007)
+    - WaitHealthy stage: pending (waits on WP1.11 health waits / CI Gate 1)
+    - Wire stage: done (calls internal/wiring Runner unchanged; per-app failure isolation)
+    - Summary stage: done (per-app results; secrets redacted)
+    - Stays unticked until headless apply reaches healthy containers on clean Ubuntu.
 - [ ] **WP1.3 Template format** [M]: per-app fragment schema (ports, volumes, env, healthcheck, RAM estimate, slot type for media server) plus Sonarr, Radarr, Prowlarr, qBittorrent, Jellyfin, Seerr fragments. `G1`, `G5`, `G8`
 - [ ] **WP1.4 Generator** [L]: merge fragments, ports, PUID/PGID/`user:`, TZ, idempotent diff, golden tests for every preset. `G1` to `G8`
 - [ ] **WP1.5 Folder layout** [S]: create single-root layout with correct ownership. `L1`, `L2`
@@ -376,7 +383,7 @@ Short files in `docs/adr/`, one per decision: context, decision, consequences. W
 - [x] ADR-0010: Registry, image name, and namespace (GHCR only, `ghcr.io/bruceowenga/arrstart`, pinned tags never latest)
 - [x] ADR-0011: Go module path and repo layout
 - [x] ADR-0012: Scaffold conventions (WP0.1)
-- [ ] ADR-0013: Apply engine shared by headless mode and wizard UI (`arrstart apply --answers`) — proposed
+- [x] ADR-0013: Apply engine shared by headless mode and wizard UI (`arrstart apply --answers`)
 
 ---
 

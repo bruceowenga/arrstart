@@ -411,7 +411,7 @@ Automated:
 - [x] **Wizard UI stack:** HTMX + Go templates, SSE for progress. No Node build step.
 - [x] **Wiring:** native Go clients for the narrow set of calls needed. Buildarr is Python and adds a runtime dependency; Recyclarr/Configarr are quality-profile tools, kept as an optional post-v1 add-on.
 - [x] **Media server:** Jellyfin only for v1 (open source, no account, headless setup). Media server is a swappable slot so Plex/Emby can be added later.
-- [ ] **Headless apply engine first:** `arrstart apply --answers answers.yaml` is the primary install path; the HTMX wizard is a layer on top that writes the same answers file (ADR-0013, proposed — not yet decided). CI e2e runs headless, so Gate 1 and Gate 3 can be verified before any wizard screen exists. With W9.
+- [x] **Headless apply engine first:** `arrstart apply --answers answers.yaml` is the primary install path; the HTMX wizard is a layer on top that writes the same answers file (ADR-0013). CI e2e runs headless, so Gate 1 and Gate 3 can be verified before any wizard screen exists. With W9.
 - [x] **VPN providers:** no long hardcoded list. Start with Mullvad and ProtonVPN plus a custom WireGuard/OpenVPN config option. Off by default, labelled advanced. Add more via community PRs.
 - [x] **License:** MIT. (Apache-2.0 only if an explicit patent grant becomes important. The tool only calls app APIs and generates compose files, so Sonarr/Radarr GPL licensing does not apply.)
 

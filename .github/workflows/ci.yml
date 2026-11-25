@@ -60,6 +60,12 @@ jobs:
       - name: go build
         run: go build ./...
 
+      - name: make build
+        run: make build
+
+      - name: arrstart version
+        run: ./bin/arrstart version
+
   unit:
     name: unit
     runs-on: ubuntu-latest

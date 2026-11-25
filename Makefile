@@ -11,10 +11,17 @@ fmt:
 	@if command -v shellcheck >/dev/null 2>&1; then shellcheck install.sh; fi
 	@if command -v pwsh >/dev/null 2>&1; then pwsh -Command "Invoke-ScriptAnalyzer -Path install.ps1"; fi
 
-# Build the wizard binary and image locally.
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "")
+DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+
+# Build the arrstart binary with ldflags (version, commit, date).
 build:
-	$(GO) build -o bin/arrstart ./cmd/arrstart
-	docker build --platform linux/amd64,linux/arm64 -t ghcr.io/bruceowenga/arrstart:edge .
+	$(GO) build -ldflags="-X 'main.version=$(VERSION)' -X 'main.commit=$(COMMIT)' -X 'main.date=$(DATE)'" -o bin/arrstart ./cmd/arrstart
+
+# Build the OCI image (plain docker build; no --platform list).
+image:
+	docker build -t ghcr.io/bruceowenga/arrstart:edge .
 
 # Headless end-to-end run against real containers (Linux).
 e2e:
