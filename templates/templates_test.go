@@ -20,6 +20,9 @@ var documentedSlotValues = map[string]struct{}{
 // TestFragmentsParse ensures every v1 app has an embedded fragment that parses
 // and whose image key resolves against versions.yaml without "latest" (G1, G5).
 func TestFragmentsParse(t *testing.T) {
+	if err := Validate(); err != nil {
+		t.Fatalf("Validate(): %v", err)
+	}
 	for _, app := range expectedApps {
 		f, err := LoadFragment(app)
 		if err != nil {
@@ -55,6 +58,17 @@ var expectedPorts = map[string]map[int]int{ // container -> host
 	"qbittorrent": {8080: 8080},
 	"jellyfin":    {8096: 8096},
 	"seerr":       {5055: 5055},
+}
+
+// expectedHealthcheckTool is the HTTP probe tool each pinned image provides
+// (verified against the real image): curl for all except seerr (wget).
+var expectedHealthcheckTool = map[string]string{
+	"sonarr":      "curl",
+	"radarr":      "curl",
+	"prowlarr":    "curl",
+	"qbittorrent": "curl",
+	"jellyfin":    "curl",
+	"seerr":       "wget",
 }
 
 // TestExpectedPorts is an explicit ports table asserted against fragments.
@@ -112,6 +126,39 @@ func TestExpectedMounts(t *testing.T) {
 				t.Errorf("fragment %q volume[%d] = {%q -> %q ro=%v}, want {%q -> %q ro=%v}", app, i, v.Host, v.Container, v.ReadOnly, wv.Host, wv.Container, wv.ReadOnly)
 			}
 		}
+	}
+}
+
+// TestExpectedHealthcheckTool asserts each fragment's healthcheck uses a tool
+// that exists in its pinned image (probe: curl in sonarr/radarr/prowlarr/
+// qbittorrent/jellyfin, wget in seerr/seerr:v3.5.2).
+func TestExpectedHealthcheckTool(t *testing.T) {
+	for app, want := range expectedHealthcheckTool {
+		f, err := LoadFragment(app)
+		if err != nil {
+			t.Fatalf("LoadFragment(%q): %v", app, err)
+		}
+		if f.Healthcheck == nil || len(f.Healthcheck.Test) < 2 {
+			t.Fatalf("fragment %q: healthcheck missing or malformed", app)
+		}
+		if got := f.Healthcheck.Test[1]; got != want {
+			t.Fatalf("fragment %q healthcheck tool %q, want %q", app, got, want)
+		}
+	}
+}
+
+// TestValidate runs Validate() and asserts seerr's pinned digest (G5).
+func TestValidate(t *testing.T) {
+	if err := Validate(); err != nil {
+		t.Fatalf("Validate(): %v", err)
+	}
+	pin, ok := Pins["seerr"]
+	if !ok {
+		t.Fatalf("Validate(): seerr pin missing from versions.yaml")
+	}
+	want := "sha256:aadee014b40e28cf9aa4928bc9d1183a6eb08f8c44d543cddc9efdcb16549be2"
+	if pin.Digest != want {
+		t.Fatalf("seerr digest = %q, want %q", pin.Digest, want)
 	}
 }
 

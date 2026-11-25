@@ -13,6 +13,7 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
+	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -73,35 +74,54 @@ type UserRules struct {
 
 // Pin is one pinned image:tag from versions.yaml (G5: tag is exact, never "latest").
 type Pin struct {
-	Image string `yaml:"image"`
-	Tag   string `yaml:"tag"`
+	Image  string `yaml:"image"`
+	Tag    string `yaml:"tag"`
+	Digest string `yaml:"digest,omitempty"` // optional sha256:<64 hex>; verified by Validate()
 }
 
-// Pins holds the parsed versions.yaml images map, populated at init from the
-// embedded versions.yaml. Keyed by app name.
+// Pins holds the parsed versions.yaml images map, populated by Validate() and
+// keyed by app name.
 var Pins map[string]Pin
 
+// digestRe validates an optional image digest: sha256:<64 lowercase hex>.
+var digestRe = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
+
+// init populates Pins from the embedded versions.yaml without panicking;
+// validation errors surface through Validate() instead.
 func init() {
-	Pins = make(map[string]Pin)
+	_ = Validate()
+}
+
+// Validate parses the embedded versions.yaml and returns an error if any pin
+// is missing a tag, uses "latest", or carries a malformed digest. On success
+// it (re)populates Pins. Safe to call multiple times; consumed by the
+// generator at startup and by templates_test.go (G1, G5).
+func Validate() error {
 	data, err := fs.ReadFile(TemplatesFS, "versions.yaml")
 	if err != nil {
-		panic(fmt.Sprintf("templates: read embedded versions.yaml: %v", err))
+		return fmt.Errorf("templates: read embedded versions.yaml: %w", err)
 	}
 	var doc struct {
 		Images map[string]Pin `yaml:"images"`
 	}
 	if err := yaml.Unmarshal(data, &doc); err != nil {
-		panic(fmt.Sprintf("templates: parse embedded versions.yaml: %v", err))
+		return fmt.Errorf("templates: parse embedded versions.yaml: %w", err)
 	}
+	pins := make(map[string]Pin, len(doc.Images))
 	for app, pin := range doc.Images {
 		if pin.Tag == "" {
-			panic(fmt.Sprintf("templates: %s has empty tag in versions.yaml", app))
+			return fmt.Errorf("templates: %s has empty tag in versions.yaml", app)
 		}
 		if strings.EqualFold(pin.Tag, "latest") {
-			panic(fmt.Sprintf("templates: %s uses forbidden 'latest' tag in versions.yaml", app))
+			return fmt.Errorf("templates: %s uses forbidden 'latest' tag in versions.yaml", app)
 		}
-		Pins[app] = pin
+		if pin.Digest != "" && !digestRe.MatchString(pin.Digest) {
+			return fmt.Errorf("templates: %s has malformed digest %q; want sha256:<64 hex", app, pin.Digest)
+		}
+		pins[app] = pin
 	}
+	Pins = pins
+	return nil
 }
 
 // Image returns the pinned "image:tag" ref for the given app key (G5). The

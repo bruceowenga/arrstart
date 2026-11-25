@@ -7,6 +7,8 @@
 #   * Prefer linuxserver.io images where available (PRD G5).
 #   * Verify every tag against the real registry before a release
 #     (WP0.9 verification step: pull each pinned image on amd64 and arm64).
+#   * Optional digest: when present must be sha256:<64 hex; verified by
+#     templates.Validate() (G5).
 #
 # All entries below are multi-arch images (amd64 + arm64) at the registries
 # they were checked against. Re-check tags when apps release new versions;
@@ -41,6 +43,7 @@ images:
   seerr:
     image: seerr/seerr
     tag: "v3.5.2"
+    digest: "sha256:aadee014b40e28cf9aa4928bc9d1183a6eb08f8c44d543cddc9efdcb16549be2"
     source: https://hub.docker.com/r/seerr/seerr/tags
     note: >
       PRD section 9 names ghcr.io/seerr-team/seerr, but that registry does
