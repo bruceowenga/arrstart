@@ -138,7 +138,7 @@ func (c *Client) WaitHealthy(ctx context.Context) error {
 // When Seerr is not yet initialized (no admin created via /setup), settings
 // writes return 401/403 and Configure returns an error wrapping
 // errSeerrNotInitialized with guidance to complete the one-time /setup step
-// and re-run `arrstack rewire`. Once initialized, the connections are applied
+// and re-run `arrstart rewire`. Once initialized, the connections are applied
 // idempotently and remembered for Verify.
 func (c *Client) Configure(ctx context.Context, cfg any) error {
 	conf, ok := cfg.(*Config)
@@ -363,9 +363,9 @@ func (c *Client) getRadarrSettings(ctx context.Context) (*radarrSettingsResponse
 }
 
 // notInitializedErr wraps errSeerrNotInitialized with guidance to complete the
-// one-time Seerr setup at <BaseURL>/setup and re-run `arrstack rewire`.
+// one-time Seerr setup at <BaseURL>/setup and re-run `arrstart rewire`.
 func notInitializedErr(baseURL string) error {
-	return fmt.Errorf("%w: create the admin user once through the web UI at %s/setup, then re-run `arrstack rewire`",
+	return fmt.Errorf("%w: create the admin user once through the web UI at %s/setup, then re-run `arrstart rewire`",
 		errSeerrNotInitialized, baseURL)
 }
 
