@@ -6,7 +6,7 @@
 
 **Arr stack** — Sonarr, Radarr, Prowlarr, qBittorrent, Jellyfin, Seerr, plus an optional gluetun VPN and Tailscale remote access. Homepage dashboard is included. Bazarr and subtitle wiring are post-v1.
 
-**Bootstrap** — `install.sh` (Linux) / `install.ps1` (Windows): detects/installs Docker, asks for the media root folder, launches the wizard container, opens the browser, installs the `arrstack` helper wrapper.
+**Bootstrap** — `install.sh` (Linux) / `install.ps1` (Windows): detects/installs Docker, asks for the media root folder, launches the wizard container, opens the browser, installs the `arrstart` helper wrapper.
 
 **Wizard** — Go backend + HTMX + Go templates, SSE progress screen, single static binary, multi-arch image. Bind to localhost only, random one-time token in URL, `--rm`, exits when done.
 
