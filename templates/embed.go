@@ -86,12 +86,6 @@ var Pins map[string]Pin
 // digestRe validates an optional image digest: sha256:<64 lowercase hex>.
 var digestRe = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 
-// init populates Pins from the embedded versions.yaml without panicking;
-// validation errors surface through Validate() instead.
-func init() {
-	_ = Validate()
-}
-
 // Validate parses the embedded versions.yaml and returns an error if any pin
 // is missing a tag, uses "latest", or carries a malformed digest. On success
 // it (re)populates Pins. Safe to call multiple times; consumed by the
@@ -124,14 +118,18 @@ func Validate() error {
 	return nil
 }
 
-// Image returns the pinned "image:tag" ref for the given app key (G5). The
-// boolean is false when the key is absent from versions.yaml.
-func Image(key string) (ref string, ok bool) {
+// Image returns the pinned "image:tag" ref for the given app key (G5). It
+// returns an error if Validate() has not been called yet, or if the key is
+// absent from versions.yaml.
+func Image(key string) (ref string, err error) {
+	if Pins == nil {
+		return "", fmt.Errorf("templates: Validate() has not been called; Image(%q) requires a prior Validate()", key)
+	}
 	pin, ok := Pins[key]
 	if !ok {
-		return "", false
+		return "", fmt.Errorf("templates: %q not found in versions.yaml", key)
 	}
-	return pin.Image + ":" + pin.Tag, true
+	return pin.Image + ":" + pin.Tag, nil
 }
 
 // LoadFragment returns the per-app fragment for the given app (G1).

@@ -31,10 +31,10 @@ func TestFragmentsParse(t *testing.T) {
 		if f.App != app {
 			t.Fatalf("LoadFragment(%q).App = %q, want %q", app, f.App, app)
 		}
-		if _, ok := Image(f.ImageKey); !ok {
-			t.Fatalf("fragment %q image key %q not in versions.yaml", app, f.ImageKey)
+		ref, err := Image(f.ImageKey)
+		if err != nil {
+			t.Fatalf("fragment %q image key %q: %v", app, f.ImageKey, err)
 		}
-		ref, _ := Image(f.ImageKey)
 		if strings.EqualFold(ref, ":latest") || strings.HasSuffix(ref, ":latest") {
 			t.Fatalf("fragment %q resolved image %q uses forbidden 'latest' tag", app, ref)
 		}
