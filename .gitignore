@@ -34,3 +34,5 @@ Thumbs.db
 /tmp-arrstart-test*/
 # Throwaway spike scratch (verification containers only)
 spikes/verify-compose/scratch/
+# golden fixtures hold only fake values
+!internal/generator/testdata/**/.env
