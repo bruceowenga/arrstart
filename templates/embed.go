@@ -129,6 +129,12 @@ func Image(key string) (ref string, err error) {
 	if !ok {
 		return "", fmt.Errorf("templates: %q not found in versions.yaml", key)
 	}
+	// G5: a pinned digest beats the tag — render image@sha256:... so the digest
+	// actually lands in generated compose (never :latest). Pins without a digest
+	// (qbittorrent, sonarr, …) keep image:tag form and never render @digest.
+	if pin.Digest != "" {
+		return pin.Image + "@" + pin.Digest, nil
+	}
 	return pin.Image + ":" + pin.Tag, nil
 }
 

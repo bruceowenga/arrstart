@@ -45,9 +45,20 @@ func Generate(specs []AppSpec, creds map[string]string, opts Options) (compose, 
 		return nil, nil, err
 	}
 
+	linux := opts.HostOS != "windows"
+	if linux && (opts.PUID == 0 || opts.PGID == 0) {
+		return nil, nil, fmt.Errorf("refusing to run the stack as root; set puid and pgid in answers.yaml (or run as a normal user)")
+	}
+
+	// Sort specs for deterministic, stable service ordering regardless of input
+	// order (step-1: deterministic output).
+	ordered := make([]AppSpec, len(specs))
+	copy(ordered, specs)
+	sort.Slice(ordered, func(i, j int) bool { return ordered[i].Name < ordered[j].Name })
+
 	cb := &composeBuilder{opts: opts}
 	cb.b.WriteString("# arrstart generated compose — hand-editable. Never use the latest tag.\nservices:\n")
-	for _, spec := range specs {
+	for _, spec := range ordered {
 		f, err := templates.LoadFragment(spec.Name)
 		if err != nil {
 			return nil, nil, err
@@ -107,7 +118,8 @@ func (cb *composeBuilder) renderService(spec AppSpec, f *templates.Fragment) err
 			if v.ReadOnly {
 				ro = ":ro"
 			}
-			fmt.Fprintf(&cb.b, "      - %q:%s%s\n", host, v.Container, ro)
+			mount := host + ":" + v.Container + ro
+			fmt.Fprintf(&cb.b, "      - %q\n", mount)
 		}
 	}
 
@@ -116,7 +128,7 @@ func (cb *composeBuilder) renderService(spec AppSpec, f *templates.Fragment) err
 		cb.b.WriteString("    environment:\n")
 		for _, e := range f.Environment {
 			envAdded[e.Name] = struct{}{}
-			fmt.Fprintf(&cb.b, "      %s: %s\n", e.Name, e.Value)
+			fmt.Fprintf(&cb.b, "      %s: %q\n", e.Name, e.Value)
 		}
 	}
 
@@ -130,9 +142,6 @@ func (cb *composeBuilder) renderService(spec AppSpec, f *templates.Fragment) err
 		}
 		if _, ok := envAdded["TZ"]; !ok && cb.opts.TZ != "" {
 			fmt.Fprintf(&cb.b, "      TZ: \"%s\"\n", cb.opts.TZ)
-		}
-		if _, ok := envAdded["UMASK"]; !ok {
-			fmt.Fprintf(&cb.b, "      UMASK: \"002\"\n")
 		}
 	}
 
