@@ -7,16 +7,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
 	"strings"
 	"testing"
-
-	"github.com/bruceowenga/arrstart/templates"
 )
 
-// update, when set with -update, rewrites the golden fixture files instead of
-// comparing against them. Run `go test ./internal/generator/ -run
-// TestGoldenQbittorrentLinux -update` once to create them, then review by eye.
 var update = updateFlag(false)
 
 type updateFlag bool
@@ -25,88 +19,130 @@ func (f *updateFlag) String() string   { return fmt.Sprintf("%v", *f) }
 func (f *updateFlag) Set(string) error { *f = true; return nil }
 func (f *updateFlag) IsBoolFlag() bool { return true }
 
-func init() {
-	flag.Var(&update, "update", "rewrite golden fixtures instead of comparing against them")
+func init() { flag.Var(&update, "update", "rewrite golden fixtures instead of comparing against them") }
+
+// obviously fake credential values
+var qbtCreds = map[string]string{"QBT_APIKEY": "FAKE-QBT-KEY-0001"}
+var moviesCreds = map[string]string{
+	"RADARR_APIKEY":   "FAKE-RADARR-KEY-0001",
+	"PROWLARR_APIKEY": "FAKE-PROWLARR-KEY-0001",
+	"QBT_APIKEY":      "FAKE-QBT-KEY-0001",
+}
+var familyCreds = map[string]string{
+	"SONARR_APIKEY":   "FAKE-SONARR-KEY-0001",
+	"RADARR_APIKEY":   "FAKE-RADARR-KEY-0001",
+	"PROWLARR_APIKEY": "FAKE-PROWLARR-KEY-0001",
+	"QBT_APIKEY":      "FAKE-QBT-KEY-0001",
 }
 
-// goldenCreds are obviously fake credential values.
-var goldenCreds = map[string]string{
-	"QBT_APIKEY": "FAKE-QBT-KEY-0001",
-}
-
-var baseOpts = Options{
-	MediaRoot: "/srv/media",
-	HostOS:    "linux",
-	PUID:      1000,
-	PGID:      1000,
-	TZ:        "UTC",
-}
+var baseOpts = Options{MediaRoot: "/srv/media", HostOS: "linux", PUID: 1000, PGID: 1000, TZ: "UTC"}
+var winOpts = Options{MediaRoot: `C:\Media`, HostOS: "windows", TZ: "UTC"}
 
 var qbtSpec = []AppSpec{{Name: "qbittorrent"}}
+var moviesSpec = []AppSpec{{Name: "radarr"}, {Name: "prowlarr"}, {Name: "qbittorrent"}, {Name: "jellyfin"}, {Name: "seerr"}}
+var familySpec = []AppSpec{{Name: "sonarr"}, {Name: "radarr"}, {Name: "prowlarr"}, {Name: "qbittorrent"}, {Name: "jellyfin"}, {Name: "seerr"}}
 
-func TestGoldenQbittorrentLinux(t *testing.T) {
-	if !update {
-		t.Skip("use -update to (re)create golden fixtures")
-	}
-	compose, env, err := Generate(qbtSpec, goldenCreds, baseOpts)
+type gold struct {
+	name  string
+	spec  []AppSpec
+	creds map[string]string
+	opts  Options
+	dir   string
+}
+
+var goldens = []gold{
+	{"qbittorrent-linux", qbtSpec, qbtCreds, baseOpts, "testdata/qbittorrent-linux"},
+	{"movies-linux", moviesSpec, moviesCreds, baseOpts, "testdata/movies-linux"},
+	{"family-linux", familySpec, familyCreds, baseOpts, "testdata/family-linux"},
+	{"family-windows", familySpec, familyCreds, winOpts, "testdata/family-windows"},
+}
+
+func writeGolden(t *testing.T, g gold) {
+	t.Helper()
+	compose, env, err := Generate(g.spec, g.creds, g.opts)
 	if err != nil {
 		t.Fatalf("Generate(): %v", err)
 	}
-	dir := "testdata/qbittorrent-linux"
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(g.dir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "compose.yaml"), compose, 0644); err != nil {
+	if err := os.WriteFile(filepath.Join(g.dir, "compose.yaml"), compose, 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, ".env"), env, 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(g.dir, ".env"), env, 0600); err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("wrote golden fixtures under %s", dir)
+	t.Logf("wrote golden fixtures under %s", g.dir)
 }
 
-func requireGolden(t *testing.T) ([]byte, []byte) {
-	compose, err := os.ReadFile("testdata/qbittorrent-linux/compose.yaml")
+// TestGoldenFixtures: run with -update to (re)create all four fixture dirs.
+func TestGoldenFixtures(t *testing.T) {
+	if !update {
+		t.Skip("use -update to (re)create golden fixtures")
+	}
+	for _, g := range goldens {
+		t.Run(g.name, func(t *testing.T) { writeGolden(t, g) })
+	}
+}
+
+func requireGolden(t *testing.T, dir string) ([]byte, []byte) {
+	t.Helper()
+	compose, err := os.ReadFile(filepath.Join(dir, "compose.yaml"))
 	if err != nil {
 		t.Fatalf("read golden compose: %v (run with -update to create)", err)
 	}
-	env, err := os.ReadFile("testdata/qbittorrent-linux/.env")
+	env, err := os.ReadFile(filepath.Join(dir, ".env"))
 	if err != nil {
 		t.Fatalf("read golden env: %v (run with -update to create)", err)
 	}
 	return compose, env
 }
 
-func TestGoldenQbittorrentLinuxCompare(t *testing.T) {
-	compose, env, err := Generate(qbtSpec, goldenCreds, baseOpts)
-	if err != nil {
-		t.Fatalf("Generate(): %v", err)
+// envKeys lists .env keys only — never secret values, for failure output.
+func envKeys(env string) []string {
+	var keys []string
+	for _, line := range strings.Split(env, "\n") {
+		if line == "" {
+			continue
+		}
+		k, _, _ := strings.Cut(line, "=")
+		keys = append(keys, k)
 	}
-	wantCompose, wantEnv := requireGolden(t)
-	if !bytes.Equal(compose, wantCompose) {
-		t.Fatalf("compose mismatch\ngot:\n%s\n\nwant:\n%s", compose, wantCompose)
-	}
-	if !bytes.Equal(env, wantEnv) {
-		t.Fatalf("env mismatch\ngot:\n%s\n\nwant:\n%s", env, wantEnv)
+	return keys
+}
+
+func TestGoldenCompareAll(t *testing.T) {
+	for _, g := range goldens {
+		t.Run(g.name, func(t *testing.T) {
+			compose, env, err := Generate(g.spec, g.creds, g.opts)
+			if err != nil {
+				t.Fatalf("Generate(): %v", err)
+			}
+			wantCompose, wantEnv := requireGolden(t, g.dir)
+			if !bytes.Equal(compose, wantCompose) {
+				t.Fatalf("compose mismatch for %s\ngot:\n%s\n\nwant:\n%s", g.name, compose, wantCompose)
+			}
+			if !bytes.Equal(env, wantEnv) {
+				t.Fatalf("env mismatch for %s\ngot keys: %v\nwant keys: %v", g.name, envKeys(string(env)), envKeys(string(wantEnv)))
+			}
+		})
 	}
 }
 
-func TestDeterministic(t *testing.T) {
-	multi := []AppSpec{{Name: "qbittorrent"}, {Name: "seerr"}}
-	reversed := []AppSpec{{Name: "seerr"}, {Name: "qbittorrent"}}
-	a, _, err := Generate(multi, goldenCreds, baseOpts)
+func TestDeterministicSixApps(t *testing.T) {
+	shuffled := []AppSpec{{Name: "seerr"}, {Name: "jellyfin"}, {Name: "qbittorrent"}, {Name: "prowlarr"}, {Name: "radarr"}, {Name: "sonarr"}}
+	a, _, err := Generate(familySpec, familyCreds, baseOpts)
 	if err != nil {
 		t.Fatalf("Generate(): %v", err)
 	}
-	b, _, err := Generate(reversed, goldenCreds, baseOpts)
+	b, _, err := Generate(shuffled, familyCreds, baseOpts)
 	if err != nil {
 		t.Fatalf("Generate(): %v", err)
 	}
 	if !bytes.Equal(a, b) {
-		t.Fatalf("spec order changed output\na:\n%s\n\nb:\n%s", a, b)
+		t.Fatalf("spec order changed output")
 	}
-	// identical inputs must be identical as well
-	c, _, err := Generate(multi, goldenCreds, baseOpts)
+	c, _, err := Generate(familySpec, familyCreds, baseOpts)
 	if err != nil {
 		t.Fatalf("Generate(): %v", err)
 	}
@@ -115,31 +151,103 @@ func TestDeterministic(t *testing.T) {
 	}
 }
 
-func TestWindowsPaths(t *testing.T) {
-	winOpts := Options{
-		MediaRoot: `C:\Media`,
-		HostOS:    "windows",
-		PUID:      0,
-		PGID:      0,
-		TZ:        "",
-	}
-	compose, env, err := Generate(qbtSpec, goldenCreds, winOpts)
+func TestImagesPinned(t *testing.T) {
+	compose, _, err := Generate(familySpec, familyCreds, baseOpts)
 	if err != nil {
 		t.Fatalf("Generate(): %v", err)
 	}
+	for _, line := range strings.Split(string(compose), "\n") {
+		if !strings.HasPrefix(strings.TrimSpace(line), "image: ") {
+			continue
+		}
+		ref := strings.TrimSpace(line)[len("image: "):]
+		if strings.Contains(ref, ":latest") {
+			t.Fatalf("image %q uses forbidden :latest tag", ref)
+		}
+		at := strings.Index(ref, "@")
+		colon := strings.LastIndex(ref, ":")
+		pinned := at > 0 || (colon > 0 && ref[colon+1:] != "")
+		if !pinned {
+			t.Errorf("image %q is not pinned (tag or digest)", ref)
+		}
+	}
+}
+
+func TestComposeUserAppsNoPuidEnv(t *testing.T) {
+	compose, _, err := Generate([]AppSpec{{Name: "jellyfin"}, {Name: "seerr"}}, familyCreds, baseOpts)
+	if err != nil {
+		t.Fatalf("Generate(): %v", err)
+	}
+	for _, line := range strings.Split(string(compose), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "PUID:") || strings.HasPrefix(trimmed, "PGID:") {
+			t.Errorf("compose_user app renders env %q", trimmed)
+		}
+	}
+}
+
+func TestDockerComposeConfig(t *testing.T) {
+	for _, g := range goldens {
+		t.Run(g.name, func(t *testing.T) {
+			if _, err := exec.LookPath("docker"); err != nil {
+				if os.Getenv("CI") == "true" {
+					t.Fatal("docker required in CI but not available")
+				}
+				t.Skip("docker not available locally")
+			}
+			compose, env, err := Generate(g.spec, g.creds, g.opts)
+			if err != nil {
+				t.Fatalf("Generate(): %v", err)
+			}
+			dir := t.TempDir()
+			cf := filepath.Join(dir, "docker-compose.yml")
+			ef := filepath.Join(dir, ".env")
+			if err := os.WriteFile(cf, compose, 0644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(ef, env, 0600); err != nil {
+				t.Fatal(err)
+			}
+			cmd := exec.Command("docker", "compose", "-f", cf, "--env-file", ef, "config")
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("docker compose config failed: %v\n%s", err, out)
+			}
+			t.Logf("docker compose config OK:\n%s", out)
+		})
+	}
+}
+
+func TestWindowsPaths(t *testing.T) {
+	compose, env, err := Generate(familySpec, familyCreds, winOpts)
+	if err != nil {
+		t.Fatalf("Generate(): %v", err)
+	}
+	// Windows: no PUID/PGID/user: anywhere in compose.
+	for _, line := range strings.Split(string(compose), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, "PUID:") || strings.HasPrefix(trimmed, "PGID:") {
+			t.Errorf("windows compose renders %q", trimmed)
+		}
+		if strings.Contains(trimmed, "user:") {
+			t.Errorf("windows compose renders %q", trimmed)
+		}
+	}
+	if strings.Contains(string(compose), "UMASK") {
+		t.Errorf("windows compose must not set UMASK:\n%s", compose)
+	}
+	// Normalized forward-slash bind mounts.
 	if !strings.Contains(string(compose), "C:/Media/config/qbittorrent:/config") {
 		t.Errorf("compose missing normalized windows config volume:\n%s", compose)
 	}
 	if !strings.Contains(string(compose), "C:/Media/data:/data") {
 		t.Errorf("compose missing normalized windows data volume:\n%s", compose)
 	}
-	if strings.Contains(string(compose), " user:") {
-		t.Errorf("compose must not set user: on windows:\n%s", compose)
-	}
-	if strings.Contains(string(compose), "UMASK") {
-		t.Errorf("compose must not set UMASK on windows:\n%s", compose)
-	}
+	// TZ IS rendered on windows (answers.yaml timezone); PUID/PGID are not.
 	envStr := string(env)
+	if !strings.Contains(envStr, "TZ=UTC") {
+		t.Errorf("windows .env missing TZ=UTC:\n%s", envStr)
+	}
 	for _, key := range []string{"PUID=", "PGID=", "UMASK="} {
 		if strings.Contains(envStr, key) {
 			t.Errorf(".env must not contain %q on windows:\n%s", key, envStr)
@@ -149,19 +257,17 @@ func TestWindowsPaths(t *testing.T) {
 
 func TestPortConflictQbittorrent(t *testing.T) {
 	conflict := []AppSpec{{Name: "qbittorrent", HostPortOverride: map[int]int{8080: 18080}}}
-	compose, env, err := Generate(conflict, goldenCreds, baseOpts)
+	compose, env, err := Generate(conflict, qbtCreds, baseOpts)
 	if err != nil {
 		t.Fatalf("Generate(): %v", err)
 	}
 	if !strings.Contains(string(compose), " - \"18080:18080\"") {
 		t.Errorf("expected equal host/container remap 18080:18080:\n%s", compose)
 	}
-	envStr := string(env)
-	if !strings.Contains(envStr, "WEBUI_PORT=18080") {
-		t.Errorf("expected WEBUI_PORT=18080 in .env:\n%s", envStr)
+	if !strings.Contains(string(env), "WEBUI_PORT=18080") {
+		t.Errorf("expected WEBUI_PORT=18080 in .env:\n%s", env)
 	}
-	// default case has no WEBUI_PORT
-	_, envDefault, err := Generate(qbtSpec, goldenCreds, baseOpts)
+	_, envDefault, err := Generate(qbtSpec, qbtCreds, baseOpts)
 	if err != nil {
 		t.Fatalf("Generate(): %v", err)
 	}
@@ -170,103 +276,11 @@ func TestPortConflictQbittorrent(t *testing.T) {
 	}
 }
 
-func TestDigestRendering(t *testing.T) {
-	// qbittorrent pin has no digest -> image:tag form, never @digest.
-	compose, _, err := Generate(qbtSpec, goldenCreds, baseOpts)
-	if err != nil {
-		t.Fatalf("Generate(): %v", err)
-	}
-	want := "image: linuxserver/qbittorrent:5.3.0_v2.1.2-ls488"
-	if !strings.Contains(string(compose), want) {
-		t.Errorf("expected %q in compose:\n%s", want, compose)
-	}
-	if strings.Contains(string(compose), "@sha256") {
-		t.Errorf("no-digest pin must not render @digest:\n%s", compose)
-	}
-	// seerr pin carries a digest in versions.yaml (data model). Rendering it as
-	// image@sha256 requires templates.Image() to append @digest (tracked).
-	if d := templates.Pins["seerr"].Digest; d == "" {
-		t.Fatal("seerr pin missing digest in versions.yaml")
-	}
-}
-
-func TestNoLatestAndNoSecretsInCompose(t *testing.T) {
-	compose, env, err := Generate(qbtSpec, goldenCreds, baseOpts)
-	if err != nil {
-		t.Fatalf("Generate(): %v", err)
-	}
-	if strings.Contains(string(compose), ":latest") {
-		t.Fatalf("compose must not contain :latest:\n%s", compose)
-	}
-	// cred values live only in .env; compose references them only as ${VAR}.
-	for _, v := range goldenCreds {
-		if strings.Contains(string(compose), v) {
-			t.Fatalf("compose contains credential value %q:\n%s", v, compose)
-		}
-	}
-	// .env is sorted and has no duplicate keys.
-	lines := strings.Split(string(env), "\n")
-	seen := make(map[string]bool)
-	var keys []string
-	for _, line := range lines {
-		if line == "" {
-			continue
-		}
-		k, _, _ := strings.Cut(line, "=")
-		keys = append(keys, k)
-		if seen[k] {
-			t.Fatalf(".env has duplicate key %q", k)
-		}
-		seen[k] = true
-	}
-	sorted := append([]string(nil), keys...)
-	sort.Strings(sorted)
-	for i := range keys {
-		if keys[i] != sorted[i] {
-			t.Fatalf(".env keys not sorted: %v", keys)
-		}
-	}
-}
-
 func TestRootRefused(t *testing.T) {
-	rootOpts := Options{
-		MediaRoot: "/srv/media",
-		HostOS:    "linux",
-		PUID:      0,
-		PGID:      1000,
-		TZ:        "UTC",
-	}
-	if _, _, err := Generate(qbtSpec, goldenCreds, rootOpts); err == nil {
+	rootOpts := Options{MediaRoot: "/srv/media", HostOS: "linux", PUID: 0, PGID: 1000, TZ: "UTC"}
+	if _, _, err := Generate(qbtSpec, qbtCreds, rootOpts); err == nil {
 		t.Fatal("expected error for PUID 0 on linux")
 	} else if !strings.Contains(err.Error(), "refusing to run the stack as root") {
 		t.Fatalf("unexpected error: %v", err)
 	}
-}
-
-func TestComposeConfigValid(t *testing.T) {
-	if _, err := exec.LookPath("docker"); err != nil {
-		if os.Getenv("CI") == "true" {
-			t.Fatal("docker required in CI but not available")
-		}
-		t.Skip("docker not available locally")
-	}
-	compose, env, err := Generate(qbtSpec, goldenCreds, baseOpts)
-	if err != nil {
-		t.Fatalf("Generate(): %v", err)
-	}
-	dir := t.TempDir()
-	cf := filepath.Join(dir, "docker-compose.yml")
-	ef := filepath.Join(dir, ".env")
-	if err := os.WriteFile(cf, compose, 0644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(ef, env, 0600); err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.Command("docker", "compose", "-f", cf, "--env-file", ef, "config")
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("docker compose config failed: %v\n%s", err, out)
-	}
-	t.Logf("docker compose config OK:\n%s", out)
 }

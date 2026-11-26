@@ -56,7 +56,7 @@ func Generate(specs []AppSpec, creds map[string]string, opts Options) (compose, 
 	copy(ordered, specs)
 	sort.Slice(ordered, func(i, j int) bool { return ordered[i].Name < ordered[j].Name })
 
-	cb := &composeBuilder{opts: opts}
+	cb := &composeBuilder{opts: opts, creds: creds}
 	cb.b.WriteString("# arrstart generated compose — hand-editable. Never use the latest tag.\nservices:\n")
 	for _, spec := range ordered {
 		f, err := templates.LoadFragment(spec.Name)
@@ -79,12 +79,27 @@ func Generate(specs []AppSpec, creds map[string]string, opts Options) (compose, 
 		fmt.Fprintf(&envB, "%s=%s\n", k, envVars[k])
 	}
 
-	return []byte(strings.TrimRight(cb.b.String(), "\n")), []byte(strings.TrimRight(envB.String(), "\n")), nil
+	composeOut := strings.TrimRight(cb.b.String(), "\n") + "\n"
+	envOut := strings.TrimRight(envB.String(), "\n") + "\n"
+	return []byte(composeOut), []byte(envOut), nil
+}
+
+// servarrAPIKey maps a Servarr app to the compose env var that carries its
+// API key and the matching credential key. Rendered only when the credential
+// key is present (spike S1, verified against pinned containers).
+var servarrAPIKey = map[string]struct {
+	env  string // compose environment variable name
+	cred string // credential key in the credentials map
+}{
+	"sonarr":   {env: "SONARR__AUTH__APIKEY", cred: "SONARR_APIKEY"},
+	"radarr":   {env: "RADARR__AUTH__APIKEY", cred: "RADARR_APIKEY"},
+	"prowlarr": {env: "PROWLARR__AUTH__APIKEY", cred: "PROWLARR_APIKEY"},
 }
 
 // composeBuilder accumulates one docker-compose.yml document.
 type composeBuilder struct {
 	opts      Options
+	creds     map[string]string // credentials; compose references them only as ${VAR}
 	b         strings.Builder
 	webUIPort string // set when any port is remapped (host != container)
 }
@@ -94,7 +109,7 @@ func (cb *composeBuilder) renderService(spec AppSpec, f *templates.Fragment) err
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(&cb.b, "  %s:\n    image: %s\n", f.App, image)
+	fmt.Fprintf(&cb.b, "  %s:\n    image: %s\n    restart: unless-stopped\n", f.App, image)
 
 	if len(f.Ports) > 0 {
 		cb.b.WriteString("    ports:\n")
@@ -123,25 +138,46 @@ func (cb *composeBuilder) renderService(spec AppSpec, f *templates.Fragment) err
 		}
 	}
 
+	// One ordered environment list: fragment entries first, then rules.
+	// PUID/PGID are LinuxServer-only: skipped on windows and for
+	// compose_user apps. TZ is honoured on every OS for non-compose_user
+	// apps only (never verified for Jellyfin/Seerr images).
+	type envEntry struct{ name, value string }
+	var envList []envEntry
 	envAdded := make(map[string]struct{}, len(f.Environment))
-	if len(f.Environment) > 0 {
-		cb.b.WriteString("    environment:\n")
-		for _, e := range f.Environment {
-			envAdded[e.Name] = struct{}{}
-			fmt.Fprintf(&cb.b, "      %s: %q\n", e.Name, e.Value)
+	add := func(name, value string) {
+		if _, dup := envAdded[name]; dup {
+			return
+		}
+		envAdded[name] = struct{}{}
+		envList = append(envList, envEntry{name, value})
+	}
+	linux := cb.opts.HostOS != "windows"
+	for _, e := range f.Environment {
+		if (e.Name == "PUID" || e.Name == "PGID") && (!linux || f.UserRules.ComposeUser) {
+			continue
+		}
+		add(e.Name, e.Value)
+	}
+	if f.UserRules.PUIDPGID && linux {
+		add("PUID", "${PUID}")
+		add("PGID", "${PGID}")
+	}
+	if cb.opts.TZ != "" && !f.UserRules.ComposeUser {
+		add("TZ", "${TZ}")
+	}
+	// Inject the Servarr API key env var when a matching credential exists
+	// (spike S1: SONARR__AUTH__APIKEY etc., verified against pinned containers).
+	// The value itself lives only in .env; compose references ${VAR} only.
+	if m, ok := servarrAPIKey[f.App]; ok {
+		if _, hasCred := cb.creds[m.cred]; hasCred {
+			add(m.env, "${"+m.cred+"}")
 		}
 	}
-
-	linux := cb.opts.HostOS != "windows"
-	if f.UserRules.PUIDPGID && linux {
-		if _, ok := envAdded["PUID"]; !ok {
-			fmt.Fprintf(&cb.b, "      PUID: \"%d\"\n", cb.opts.PUID)
-		}
-		if _, ok := envAdded["PGID"]; !ok {
-			fmt.Fprintf(&cb.b, "      PGID: \"%d\"\n", cb.opts.PGID)
-		}
-		if _, ok := envAdded["TZ"]; !ok && cb.opts.TZ != "" {
-			fmt.Fprintf(&cb.b, "      TZ: \"%s\"\n", cb.opts.TZ)
+	if len(envList) > 0 {
+		cb.b.WriteString("    environment:\n")
+		for _, e := range envList {
+			fmt.Fprintf(&cb.b, "      %s: %q\n", e.name, e.value)
 		}
 	}
 
@@ -200,9 +236,9 @@ func envLines(opts Options, creds map[string]string, webUIPort string) map[strin
 		if opts.PGID != 0 {
 			m["PGID"] = fmt.Sprintf("%d", opts.PGID)
 		}
-		if opts.TZ != "" {
-			m["TZ"] = opts.TZ
-		}
+	}
+	if opts.TZ != "" {
+		m["TZ"] = opts.TZ
 	}
 	if webUIPort != "" {
 		m["WEBUI_PORT"] = webUIPort
