@@ -1,0 +1,33 @@
+app: radarr
+slot: media-manager
+image: radarr   # key into templates/versions.yaml images map (pinned tag, never latest)
+ports:
+  - container: 7878
+    host: 7878
+volumes:
+  - host: "<root>/config/radarr"
+    container: /config
+  - host: "<root>/data"
+    container: /data
+environment:
+  - name: PUID
+    value: "${PUID}"
+  - name: PGID
+    value: "${PGID}"
+  - name: TZ
+    value: "${TZ}"
+healthcheck:
+  test:
+    - CMD
+    - curl
+    - -f
+    - http://localhost:7878/
+  interval: 30s
+  timeout: 10s
+  retries: 3
+ram_estimate_mb: 350
+user_rules:
+  os:
+    - linux
+    - darwin
+  puid_pgid: true

@@ -1,0 +1,30 @@
+app: jellyfin
+slot: media-server   # G8: swappable media-server slot; not hard-coded in the generator
+image: jellyfin   # key into templates/versions.yaml images map (pinned tag, never latest)
+ports:
+  - container: 8096
+    host: 8096
+volumes:
+  - host: "<root>/config/jellyfin"
+    container: /config
+  - host: "<root>/config/jellyfin-cache"
+    container: /cache
+  - host: "<root>/data"
+    container: /data
+    read_only: true
+environment: []
+healthcheck:
+  test:
+    - CMD
+    - curl
+    - -f
+    - http://localhost:8096/
+  interval: 30s
+  timeout: 10s
+  retries: 3
+ram_estimate_mb: 1500
+user_rules:
+  os:
+    - linux
+    - darwin
+  compose_user: true

@@ -1,0 +1,30 @@
+app: seerr
+slot: search-service
+image: seerr   # key into templates/versions.yaml images map (pinned tag, never latest)
+ports:
+  - container: 5055
+    host: 5055
+volumes:
+  - host: "<root>/config/seerr"
+    container: /app/config
+# G4: seerr does NOT use the LSIO PUID/PGID convention. Instead the generator
+# sets compose `user: "${PUID}:${PGID}"` and chowns its config folder to match.
+# Seerr does not mount /data (no media volumes); ADR-0006 governs user/config ownership.
+environment: []
+healthcheck:
+  test:
+    - CMD
+    - wget
+    - -q
+    - -O
+    - /dev/null
+    - http://localhost:5055/api/v1/status
+  interval: 30s
+  timeout: 10s
+  retries: 3
+ram_estimate_mb: 500
+user_rules:
+  os:
+    - linux
+    - darwin
+  compose_user: true
