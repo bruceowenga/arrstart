@@ -232,8 +232,10 @@ Build as **vertical slices**: get a thin end-to-end path working first, then wid
     - Wire stage: done (calls internal/wiring Runner unchanged; per-app failure isolation)
     - Summary stage: done (per-app results; secrets redacted)
     - Stays unticked until headless apply reaches healthy containers on clean Ubuntu.
-- [ ] **WP1.3 Template format** [M]: per-app fragment schema (ports, volumes, env, healthcheck, RAM estimate, slot type for media server) plus Sonarr, Radarr, Prowlarr, qBittorrent, Jellyfin, Seerr fragments. `G1`, `G5`, `G8`
+- [x] **WP1.3 Template format** [M]: per-app fragment schema (ports, volumes, env, healthcheck, RAM estimate, slot type for media server) plus Sonarr, Radarr, Prowlarr, qBittorrent, Jellyfin, Seerr fragments. `G1`, `G5`, `G8`
 - [ ] **WP1.4 Generator** [L]: merge fragments, ports, PUID/PGID/`user:`, TZ, idempotent diff, golden tests for every preset. `G1` to `G8`
+    - Done: render all six apps fragment-driven; golden fixtures qbittorrent-linux, movies-linux, family-linux, family-windows (byte-compare golden tests, `go test ./... -race -count=1` green, `docker compose config` verified for all four); equal host/container ports with `WEBUI_PORT` injected on qBittorrent remap; root refusal on Linux; digest pins (`image@sha256:…` when a digest exists); Servarr API key env injection (`SONARR__AUTH__APIKEY`, `RADARR__AUTH__APIKEY`, `PROWLARR__AUTH__APIKEY`) from credentials only as `${VAR}`.
+    - Pending: WriteFiles with `.new`/`--force` and idempotent diff, host-port conflict detection, credential reuse on re-run, wiring `Generate` into `internal/apply`, folder provisioning (WP1.5).
 - [ ] **WP1.5 Folder layout** [S]: create single-root layout with correct ownership. `L1`, `L2`
 - [ ] **WP1.11 CI Gate 1: headless apply on clean Ubuntu** [M]: **NEW**. CI job runs `arrstart apply --answers answers.yaml` on a clean Ubuntu VM and asserts containers healthy and wiring summary green. UI not required for Gate 1. `B1` to `B3`, `W9`, Gate 1
 - [ ] **WP1.2 Hardware detection** [S]: RAM, CPU, free disk; tier logic. `B6`, `W3`

@@ -11,3 +11,5 @@
 - Generated compose and `.env` must stay plain and hand-editable (no lock-in).
 - Finish every task with: changed, verified, NOT verified, next step.
 - Update PRD/BUILD-PLAN checkboxes and docs/build-log.md in the same PR.
+- `Generate` returns `[]byte` for compose and `.env`; convert with `string()` before `strings.Contains` in tests. Comparing whole outputs with `bytes.Equal` (golden tests) is fine.
+- Golden fixtures are produced only with `-update` after the generator compiles; never hand-write them. Golden `.env` files are tracked through the `.gitignore` exception under `internal/generator/testdata`.
